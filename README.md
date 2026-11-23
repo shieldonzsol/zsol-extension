@@ -44,7 +44,10 @@ the zSol button in the toolbar.
 pnpm check         # types, lint, tests and formatting
 pnpm build         # production build in .output/chrome-mv3
 pnpm check:build   # checks the build: permissions, policy, no remote code, no machine paths
+pnpm test:e2e      # loads the build into headless Chromium and tests the panel
 ```
+
+The first `pnpm test:e2e` needs Playwright's Chromium: `pnpm exec playwright install chromium`.
 
 Built with [WXT](https://wxt.dev), React, Tailwind CSS and TypeScript.
 

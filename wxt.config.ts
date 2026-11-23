@@ -8,6 +8,9 @@ import { manifest } from "./src/manifest";
 export default defineConfig({
   manifestVersion: 3,
   manifest,
+  // Code lives in src/ (its alias is "@"); public/ holds the icons, copied as they are.
+  srcDir: "src",
+  publicDir: "public",
   // Explicit imports only: every name a file uses is imported where it is used.
   imports: false,
   // `pnpm dev` builds and watches; load .output/chrome-mv3-dev yourself in the browser you use.

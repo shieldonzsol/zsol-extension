@@ -54,3 +54,9 @@ jobs:
 
       - name: Check the build
         run: pnpm check:build
+
+      - name: Install Chromium for the end-to-end tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests (headless)
+        run: pnpm test:e2e

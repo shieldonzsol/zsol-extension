@@ -7,6 +7,11 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // WXT's generated paths are relative to .wxt/; tools that read this file (the shadcn CLI)
+    // need them relative to the root.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   }
 }

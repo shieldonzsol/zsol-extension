@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "./app";
-import "./style.css";
+import { App } from "@/app/app";
+import "@/styles/globals.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("The side panel page has no #root element.");

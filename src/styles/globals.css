@@ -1,0 +1,170 @@
+/*
+ * zSol's look, the same as zsol.cc: neutral black and grey with one accent, azure. Azure is what
+ * is hidden and the main button; amber is what is public; ok, warn and error are status. Dark is
+ * the default. Corners: controls 7px, panes 10px, sheets 20px. Names, headlines and figures in
+ * Sora; everything else in Inter.
+ *
+ * The shadcn CLI edits this file when a component brings new tokens: keep its shape.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Latin only: the two files ship inside the extension, nothing is fetched. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Sora Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("@fontsource-variable/sora/files/sora-latin-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-error: var(--error);
+  --color-quiet: var(--quiet);
+  --color-frost: var(--frost);
+  --color-ink: var(--ink);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.4375rem;
+
+  --background: #f6f6f6;
+  --foreground: #161616;
+  --card: #ffffff;
+  --card-foreground: #161616;
+  --popover: #ffffff;
+  --popover-foreground: #161616;
+  --primary: #00549a;
+  --primary-foreground: #ffffff;
+  --secondary: #ededed;
+  --secondary-foreground: #161616;
+  --muted: #ededed;
+  --muted-foreground: #4d4d4d;
+  --accent: #ededed;
+  --accent-foreground: #161616;
+  --destructive: #a10128;
+  --border: #dcdcdc;
+  --input: #808080;
+  --ring: #00549a;
+
+  --ok: #01726f;
+  --warn: #8a5d00;
+  --error: #a10128;
+  --quiet: #808080;
+  /* The glass over a hidden amount, and a selected row. */
+  --frost: rgba(0, 84, 154, 0.07);
+  /* Azure as small words: a key's letter, a revealed figure. */
+  --ink: #00549a;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f3f3f3;
+  --card: #171717;
+  --card-foreground: #f3f3f3;
+  --popover: #171717;
+  --popover-foreground: #f3f3f3;
+  --primary: #5cbafe;
+  --primary-foreground: #0a0a0a;
+  --secondary: #262626;
+  --secondary-foreground: #f3f3f3;
+  --muted: #262626;
+  --muted-foreground: #c4c4c4;
+  --accent: #262626;
+  --accent-foreground: #f3f3f3;
+  --destructive: #ff8e96;
+  --border: #383838;
+  --input: #717171;
+  --ring: #5cbafe;
+
+  --ok: #87f6db;
+  --warn: #ffcd54;
+  --error: #ff8e96;
+  --quiet: #717171;
+  --frost: rgba(92, 186, 254, 0.1);
+  --ink: #99d2ff;
+}
+
+/* A label, a hint or a second line: zSol's phone step, which the narrow panel uses. */
+@theme {
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.125rem;
+}
+
+/* Headlines in the kit's weight and tracking (Sora 700, -2.5%). */
+@utility headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+}
