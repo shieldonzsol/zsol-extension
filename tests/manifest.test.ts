@@ -23,6 +23,11 @@ describe("manifest", () => {
     ]);
   });
 
+  it("leaves the id to the store, but fixes it in development", () => {
+    expect(manifest).not.toHaveProperty("key");
+    expect(manifestFor("development")).toHaveProperty("key");
+  });
+
   it("never runs in incognito", () => {
     expect(manifest.incognito).toBe("not_allowed");
   });

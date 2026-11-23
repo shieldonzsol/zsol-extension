@@ -5,6 +5,10 @@ export const ZSOL_URL = "https://zsol.cc";
 // Development builds also pair with the local site.
 const ZSOL_LOCAL = "https://zsol.localhost";
 
+// Development builds get a fixed id, imigicgmjamahdpfeiciegalcbgpmfhh; the store assigns its own.
+const DEV_KEY =
+  "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxx6Vcy2qDxeQjtNqv6IMg5InD5muIjdRg1o4rnISD5ebQRGCt2Ob2r4RctTEmUuxU6VaEew1L1DJz9GX3Cez790WywetfoUetWYWxHumWAMOttuFQY8W64hTr7+I/3aq/7pzJMeQlBhokrgSprAk9+xC/tBNzmk0N5AUmFRSfBiQMZdP0/dhv7WklpsVdO5LVWwha5iU+idjtd6xee83ME2l+9ka57obpRSqMKo1aheVVb05tExxIrMX+hQfZk9MWu3UMzv0lJb/FBhYV0nmg+L+Htx18Qi3ybTwTf0qSN8vP0vCLTsi/zexL47nir/jfh79BLg5sgeYgtsqmEtY7wIDAQAB";
+
 const originsFor = (mode: string) => (mode === "development" ? [ZSOL_URL, ZSOL_LOCAL] : [ZSOL_URL]);
 
 export const ZSOL_ORIGINS: readonly string[] = originsFor(import.meta.env.MODE);
@@ -21,5 +25,6 @@ export function manifestFor(mode: string) {
     permissions: ["sidePanel"],
     action: { default_title: "Open zSol" },
     externally_connectable: { matches: originsFor(mode).map((origin) => `${origin}/*`) },
+    ...(mode === "development" ? { key: DEV_KEY } : {}),
   } satisfies UserManifest;
 }
