@@ -10,7 +10,8 @@ export const ZSOL_URL = "https://zsol.cc";
  */
 export const manifest = {
   name: "zSol",
-  description: "A private Solana wallet for traders, in your browser's side panel.",
+  description:
+    "Lightning-fast privacy on a click: zSol's private Solana wallet in your side panel or over your trading terminal.",
   homepage_url: ZSOL_URL,
   // chrome.sidePanel.open() arrived in Chrome 116.
   minimum_chrome_version: "116",

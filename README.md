@@ -1,14 +1,19 @@
 # zSol for Chrome
 
-zSol in your browser's side panel: a private Solana wallet for traders, open beside every chart.
+Lightning-fast privacy on a click, for Solana traders.
 
-> **Status: early development.** The extension is not in the Chrome Web Store yet, and this
-> panel does not hold a wallet yet. Until it does, zSol runs at [zsol.cc](https://zsol.cc).
+zSol's private wallet opens in your browser's side panel, or as an overlay on the trading
+terminals you already use (Axiom, GMGN, Terminal and more). Go dark, send, pay many and trade
+from ghost wallets without leaving your chart. Built on Helius Privacy Rings.
+
+> **Status: early development.** The extension is not in the Chrome Web Store yet, and it does
+> not hold a wallet yet. Until it does, zSol runs at [zsol.cc](https://zsol.cc).
 
 ## What it will do
 
 - Open zSol in Chrome's side panel from the toolbar, and keep it there across tabs.
-- Show your private balance and trade, send and pay from it in the panel.
+- Put zSol over a trading terminal, only on the sites where you turn it on.
+- Show your private balance and trade, send and pay from it with one click.
 - Connect to your zSol account with a one-time code from zsol.cc.
 
 ## Principles
@@ -16,7 +21,8 @@ zSol in your browser's side panel: a private Solana wallet for traders, open bes
 - **Your keys stay on your device.** The panel signs on your machine; nothing it holds is sent
   to us in the clear.
 - **The fewest permissions possible.** Today the extension asks Chrome for one: the side panel.
-  Every permission it adds is explained in its pull request.
+  The overlay will ask for a site only when you turn it on there. Every permission the extension
+  adds is explained in its pull request.
 - **No code from the network.** Everything the extension runs ships inside the package.
 - **No tracking.** The extension sends no analytics and no error reports.
 

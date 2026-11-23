@@ -2,7 +2,7 @@
   "name": "zsol-extension",
   "version": "0.0.0",
   "private": true,
-  "description": "zSol in your browser's side panel: a private Solana wallet for traders.",
+  "description": "Lightning-fast privacy on a click: zSol's private Solana wallet in your side panel or over your trading terminal.",
   "license": "MIT",
   "homepage": "https://zsol.cc",
   "repository": {
