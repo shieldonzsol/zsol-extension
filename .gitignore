@@ -1,6 +1,3 @@
-# Planning notes: never committed or published.
-/internal/
-
 # Dependencies and generated output.
 node_modules/
 .output/
@@ -12,8 +9,7 @@ test-results/
 *.tsbuildinfo
 stats*.html
 
-# Packed extensions and their signing keys. A .pem here is the extension's private key: it must
-# never reach git.
+# Packed extensions and their signing keys.
 *.zip
 *.crx
 *.pem

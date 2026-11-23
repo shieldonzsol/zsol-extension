@@ -1,22 +1,25 @@
 import type { UserManifest } from "wxt";
 
-/** zSol's website: where the wallet runs today, and where the panel connects later. */
 export const ZSOL_URL = "https://zsol.cc";
 
-/**
- * What the extension asks Chrome for. Every permission shows in the store's review and some in
- * the install prompt, so the list stays as short as the panel allows: a new one needs a reason
- * in its pull request.
- */
-export const manifest = {
-  name: "zSol",
-  description:
-    "Lightning-fast privacy on a click: zSol's private Solana wallet in your side panel or over your trading terminal.",
-  homepage_url: ZSOL_URL,
-  // chrome.sidePanel.open() arrived in Chrome 116.
-  minimum_chrome_version: "116",
-  // Wallet keys never sit in an incognito session.
-  incognito: "not_allowed",
-  permissions: ["sidePanel"],
-  action: { default_title: "Open zSol" },
-} satisfies UserManifest;
+// Development builds also pair with the local site.
+const ZSOL_LOCAL = "https://zsol.localhost";
+
+const originsFor = (mode: string) => (mode === "development" ? [ZSOL_URL, ZSOL_LOCAL] : [ZSOL_URL]);
+
+export const ZSOL_ORIGINS: readonly string[] = originsFor(import.meta.env.MODE);
+
+export function manifestFor(mode: string) {
+  return {
+    name: "zSol",
+    description:
+      "Lightning-fast privacy on a click: zSol's private Solana wallet in your side panel or over your trading terminal.",
+    homepage_url: ZSOL_URL,
+    // X25519 in Web Crypto.
+    minimum_chrome_version: "133",
+    incognito: "not_allowed",
+    permissions: ["sidePanel"],
+    action: { default_title: "Open zSol" },
+    externally_connectable: { matches: originsFor(mode).map((origin) => `${origin}/*`) },
+  } satisfies UserManifest;
+}

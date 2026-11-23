@@ -9,11 +9,9 @@ import { renewIfSpent, useTicket } from "./ticket-store";
 
 const CONNECT_URL = `${ZSOL_URL}/extension/connect`;
 
-/** Seconds as m:ss. */
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-/** The panel before it holds an account: the code to type on zsol.cc, and the way there. */
 export function ConnectScreen() {
   const ticket = useTicket();
   const now = useNow();
@@ -65,7 +63,6 @@ export function ConnectScreen() {
   );
 }
 
-/** The time, once a second. */
 function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

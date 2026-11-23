@@ -4,10 +4,7 @@ import { chromium, test as base, type BrowserContext } from "@playwright/test";
 
 const EXTENSION = path.resolve(".output/chrome-mv3");
 
-/**
- * A headless Chromium with the built extension loaded, and the extension's id. Chrome and Edge no
- * longer load an unpacked extension from the command line; Playwright's Chromium does.
- */
+// Branded Chrome no longer loads unpacked extensions from the command line; Chromium does.
 export const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // oxlint-disable-next-line no-empty-pattern -- Playwright reads a fixture's needs from this pattern.
   context: async ({}, provide) => {

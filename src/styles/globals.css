@@ -1,18 +1,11 @@
-/*
- * zSol's look, the same as zsol.cc: neutral black and grey with one accent, azure. Azure is what
- * is hidden and the main button; amber is what is public; ok, warn and error are status. Dark is
- * the default. Corners: controls 7px, panes 10px, sheets 20px. Names, headlines and figures in
- * Sora; everything else in Inter.
- *
- * The shadcn CLI edits this file when a component brings new tokens: keep its shape.
- */
+/* The shadcn CLI edits this file: keep its shape. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Latin only: the two files ship inside the extension, nothing is fetched. */
+/* Latin only, shipped in the package. */
 @font-face {
   font-family: "Inter Variable";
   font-style: normal;
@@ -104,9 +97,7 @@
   --warn: #8a5d00;
   --error: #a10128;
   --quiet: #808080;
-  /* The glass over a hidden amount, and a selected row. */
   --frost: rgba(0, 84, 154, 0.07);
-  /* Azure as small words: a key's letter, a revealed figure. */
   --ink: #00549a;
 }
 
@@ -138,13 +129,11 @@
   --ink: #99d2ff;
 }
 
-/* A label, a hint or a second line: zSol's phone step, which the narrow panel uses. */
 @theme {
   --text-label: 0.8125rem;
   --text-label--line-height: 1.125rem;
 }
 
-/* Headlines in the kit's weight and tracking (Sora 700, -2.5%). */
 @utility headline {
   font-family: var(--font-display);
   font-weight: 700;

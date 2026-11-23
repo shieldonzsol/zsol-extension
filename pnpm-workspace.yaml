@@ -1,23 +1,16 @@
-# pnpm's settings for this repository (it holds one package).
-
-# Refuse a Node outside the range in package.json "engines".
 engineStrict: true
 
-# A release must be 7 days old before it installs, with no fallback to a newer one: most
-# hijacked npm releases are caught and pulled within days.
+# Hijacked npm releases are usually pulled within days.
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
 
-# Every dependency comes from the npm registry, never from a git URL or a tarball link.
 blockExoticSubdeps: true
 
 nodeLinker: isolated
 
-# Exact versions in package.json, so an install never picks up a release nobody reviewed.
 savePrefix: ""
 
-# Install scripts stay off. Every package with a build script is named here, refused ones too.
+# Every package with an install script is named here, allowed or refused.
 strictDepBuilds: true
 allowBuilds:
-  # Ships prebuilt binaries; its postinstall only checks them.
   esbuild: false

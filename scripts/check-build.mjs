@@ -1,8 +1,4 @@
-// Checks the built extension before it is packed or published:
-// - the manifest asks for nothing beyond what src/manifest.ts declares,
-// - the content security policy keeps scripts to the package itself,
-// - no file loads a script from anywhere else (Chrome's store bans remote code),
-// - no file carries a path from the machine that built it.
+// Fails on new permissions, remote scripts, a loosened policy or machine paths in the build.
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -18,7 +14,12 @@ for (const permission of manifest.permissions ?? []) {
 for (const key of ["host_permissions", "optional_host_permissions", "content_scripts"]) {
   if (manifest[key]?.length) problems.push(`manifest has ${key}`);
 }
-if (manifest.externally_connectable) problems.push("manifest has externally_connectable");
+const pages = manifest.externally_connectable?.matches ?? [];
+if (manifest.externally_connectable?.ids || pages.join() !== "https://zsol.cc/*") {
+  problems.push(
+    `externally_connectable reaches beyond zsol.cc: ${JSON.stringify(manifest.externally_connectable)}`,
+  );
+}
 
 const policy = manifest.content_security_policy?.extension_pages;
 if (policy && !/script-src 'self'( 'wasm-unsafe-eval')?;/.test(policy)) {

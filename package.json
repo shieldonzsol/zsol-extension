@@ -25,14 +25,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --type-aware --deny-warnings",
     "test": "vitest run",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude --write .",
+    "format:check": "prettier --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude --check .",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm format:check",
     "check:build": "node scripts/check-build.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
+    "@hpke/core": "1.10.1",
     "class-variance-authority": "0.7.1",
     "cn": "0.5.2",
     "lucide-react": "1.73.0",

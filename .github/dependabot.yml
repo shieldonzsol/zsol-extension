@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # Updates wait 7 days after a release, like the install rule in pnpm-workspace.yaml.
   - package-ecosystem: npm
     directory: /
     schedule:

@@ -6,7 +6,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Read-only: CI checks and builds, it never publishes. A pull request from a fork gets no secrets.
 permissions:
   contents: read
 
