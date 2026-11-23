@@ -1,0 +1,54 @@
+{
+  "name": "zsol-extension",
+  "version": "0.0.0",
+  "private": true,
+  "description": "zSol in your browser's side panel: a private Solana wallet for traders.",
+  "license": "MIT",
+  "homepage": "https://zsol.cc",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shieldonzsol/zsol-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shieldonzsol/zsol-extension/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm format:check",
+    "check:build": "node scripts/check-build.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@rolldown/plugin-babel": "0.3.1",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "babel-plugin-react-compiler": "1.0.0",
+    "oxlint": "1.94.0",
+    "oxlint-tsgolint": "7.0.2007",
+    "prettier": "3.10.1",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "tailwindcss": "4.3.5",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0",
+    "wxt": "0.21.5"
+  }
+}

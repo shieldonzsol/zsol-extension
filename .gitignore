@@ -1,0 +1,32 @@
+# Planning notes: never committed or published.
+/internal/
+
+# Dependencies and generated output.
+node_modules/
+.output/
+.wxt/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+stats*.html
+
+# Packed extensions and their signing keys. A .pem here is the extension's private key: it must
+# never reach git.
+*.zip
+*.crx
+*.pem
+
+# Local settings and secrets.
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+.claude/
+CLAUDE.local.md
+
+# Logs and system files.
+*.log
+.DS_Store
