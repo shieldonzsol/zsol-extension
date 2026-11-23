@@ -8,6 +8,8 @@ import { useSession } from "@/features/session/session-store";
 
 // Privy's SDK is large: it loads only once the panel holds an account.
 const PrivySession = lazy(() => import("@/features/privy/privy-session"));
+// The Rings SDK and its hasher load only once the panel is signed in.
+const WalletPlace = lazy(() => import("@/features/wallet/wallet-place"));
 
 export function App() {
   const session = useSession();
@@ -18,13 +20,33 @@ export function App() {
         {session.kind === "connected" ? (
           <Suspense fallback={<ConnectedScreen wallet={session.wallet} signIn="signing-in" />}>
             <PrivySession seed={session.seed} attempt={session.attempt}>
-              <ConnectedScreen wallet={session.wallet} signIn={session.signIn} />
+              {session.signIn === "signed-in" ? (
+                <Suspense fallback={<OpeningWallet />}>
+                  <WalletPlace
+                    seed={session.seed}
+                    site={session.site}
+                    signInWallet={session.wallet}
+                  />
+                </Suspense>
+              ) : (
+                <ConnectedScreen wallet={session.wallet} signIn={session.signIn} />
+              )}
             </PrivySession>
           </Suspense>
         ) : (
           <Pairing />
         )}
       </main>
+    </div>
+  );
+}
+
+function OpeningWallet() {
+  return (
+    <div className="p-4">
+      <output className="flex flex-col gap-3 rounded-[10px] border border-border bg-card p-4 text-label text-muted-foreground">
+        Opening your private wallet…
+      </output>
     </div>
   );
 }

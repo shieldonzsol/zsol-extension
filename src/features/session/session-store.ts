@@ -9,6 +9,8 @@ export type Session =
   | { readonly kind: "unpaired" }
   | {
       readonly kind: "connected";
+      /** The zSol the panel paired with, whose API it calls. */
+      readonly site: string;
       readonly wallet: string;
       readonly seed: Uint8Array;
       readonly signIn: SignIn;
@@ -32,10 +34,11 @@ function subscribe(listener: () => void) {
 
 const currentSession = () => session;
 
-export function connect(payload: PairingPayload) {
+export function connect(payload: PairingPayload, site: string) {
   forget();
   publish({
     kind: "connected",
+    site,
     wallet: payload.wallet,
     seed: fromBase64(payload.seed),
     signIn: "signing-in",

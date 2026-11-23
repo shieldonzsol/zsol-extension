@@ -25,7 +25,7 @@ function setup() {
       ticket = newTicket(0);
     },
   };
-  const onPaired = vi.fn<(paired: PairingPayload) => void>();
+  const onPaired = vi.fn<(paired: PairingPayload, site: string) => void>();
   const handle = createPairingHandler({
     extensionId: EXTENSION,
     origins: ["https://zsol.cc"],
@@ -54,7 +54,7 @@ describe("pairing handler", () => {
     });
 
     expect(await handle({ type: SEAL, v: 1, code: typed, box }, ZSOL)).toEqual({ ok: true });
-    expect(onPaired).toHaveBeenCalledWith(payload);
+    expect(onPaired).toHaveBeenCalledWith(payload, ZSOL.origin);
     expect(await handle({ type: SEAL, v: 1, code: typed, box }, ZSOL)).toEqual({
       ok: false,
       reason: "wrong-code",

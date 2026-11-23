@@ -1,0 +1,44 @@
+diff --git a/dist/browser-fat/es/index_browser_fat.js b/dist/browser-fat/es/index_browser_fat.js
+index 2f2484a1d7dbd148b8fc60ed15cbf99186fb40b6..25ceac01fc5c0c6ed15a3f115b6b0d61f84fb807 100644
+--- a/dist/browser-fat/es/index_browser_fat.js
++++ b/dist/browser-fat/es/index_browser_fat.js
+@@ -253,7 +253,7 @@ async function __wbg_init$1(module_or_path) {
+     }
+ 
+     if (typeof module_or_path === 'undefined') {
+-        module_or_path = new URL('light_wasm_hasher_bg.wasm', import.meta.url);
++        throw new Error('light_wasm_hasher_bg.wasm is inlined in this build; pass it to init.');
+     }
+     const imports = __wbg_get_imports$1();
+ 
+@@ -519,7 +519,7 @@ async function __wbg_init(module_or_path) {
+     }
+ 
+     if (typeof module_or_path === 'undefined') {
+-        module_or_path = new URL('hasher_wasm_simd_bg.wasm', import.meta.url);
++        throw new Error('hasher_wasm_simd_bg.wasm is inlined in this build; pass it to init.');
+     }
+     const imports = __wbg_get_imports();
+ 
+diff --git a/dist/browser-slim/es/index_browser_slim.js b/dist/browser-slim/es/index_browser_slim.js
+index bece945b9b97b6463cc2e6fe9e1d7af2078576f1..a2605deb2afb2450f1e3b050eef845e9947a3ead 100644
+--- a/dist/browser-slim/es/index_browser_slim.js
++++ b/dist/browser-slim/es/index_browser_slim.js
+@@ -253,7 +253,7 @@ async function __wbg_init$1(module_or_path) {
+     }
+ 
+     if (typeof module_or_path === 'undefined') {
+-        module_or_path = new URL('light_wasm_hasher_bg.wasm', import.meta.url);
++        module_or_path = new URL('../../light_wasm_hasher_bg.wasm', import.meta.url);
+     }
+     const imports = __wbg_get_imports$1();
+ 
+@@ -519,7 +519,7 @@ async function __wbg_init(module_or_path) {
+     }
+ 
+     if (typeof module_or_path === 'undefined') {
+-        module_or_path = new URL('hasher_wasm_simd_bg.wasm', import.meta.url);
++        module_or_path = new URL('../../hasher_wasm_simd_bg.wasm', import.meta.url);
+     }
+     const imports = __wbg_get_imports();
+ 

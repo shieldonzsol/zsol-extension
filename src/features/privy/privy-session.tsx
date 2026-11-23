@@ -1,7 +1,8 @@
-import { PrivyProvider, useLoginWithSiws, usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider, useIdentityToken, useLoginWithSiws, usePrivy } from "@privy-io/react-auth";
 import { useEffect, type ReactNode } from "react";
 
 import { PRIVY_APP_ID } from "@/config";
+import { setIdentityToken } from "@/features/privy/auth-headers";
 import { siwsMessage } from "@/features/privy/siws";
 import { extensionKey } from "@/features/session/extension-key";
 import { onSignOut, setSignIn, type SignIn } from "@/features/session/session-store";
@@ -47,9 +48,19 @@ export default function PrivySession({
     >
       {/* A retry mounts a fresh attempt. */}
       <SignInWithKey key={attempt} seed={seed} />
+      <KeepIdentityToken />
       {children}
     </PrivyProvider>
   );
+}
+
+function KeepIdentityToken() {
+  const { identityToken } = useIdentityToken();
+  useEffect(() => {
+    setIdentityToken(identityToken);
+    return () => setIdentityToken(null);
+  }, [identityToken]);
+  return null;
 }
 
 function SignInWithKey({ seed }: { readonly seed: Uint8Array }) {

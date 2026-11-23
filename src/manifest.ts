@@ -17,6 +17,8 @@ const matchFor = (origin: string) => `${origin.replace(/:\d+$/, "")}/*`;
 
 export const ZSOL_ORIGINS: readonly string[] = originsFor(import.meta.env.MODE);
 
+export const EXTENSION_PAGES_POLICY = "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';";
+
 export function manifestFor(mode: string) {
   return {
     name: "zSol",
@@ -29,6 +31,8 @@ export function manifestFor(mode: string) {
     permissions: ["sidePanel"],
     action: { default_title: "Open zSol" },
     externally_connectable: { matches: originsFor(mode).map(matchFor) },
+    // The private wallet's hasher is WebAssembly shipped in the package.
+    content_security_policy: { extension_pages: EXTENSION_PAGES_POLICY },
     ...(mode === "development" ? { key: DEV_KEY } : {}),
   } satisfies UserManifest;
 }

@@ -19,12 +19,14 @@ export default defineConfig({
   webExt: { disabled: true },
   vite: () => ({
     plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
-    // Privy's CAPTCHA widgets load scripts from the network; CAPTCHA is off for this app.
     resolve: {
-      alias: {
-        "@marsidev/react-turnstile": CAPTCHA_STUB,
-        "@hcaptcha/react-hcaptcha": CAPTCHA_STUB,
-      },
+      alias: [
+        // Privy's CAPTCHA widgets load scripts from the network; CAPTCHA is off for this app.
+        { find: "@marsidev/react-turnstile", replacement: CAPTCHA_STUB },
+        { find: "@hcaptcha/react-hcaptcha", replacement: CAPTCHA_STUB },
+        // The hasher's slim build loads its .wasm from the package instead of inlining it.
+        { find: /^@lightprotocol\/hasher\.rs$/, replacement: "@lightprotocol/hasher.rs/slim" },
+      ],
     },
   }),
 });

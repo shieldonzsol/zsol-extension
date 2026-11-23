@@ -22,7 +22,7 @@ if (manifest.externally_connectable?.ids || pages.join() !== "https://zsol.cc/*"
 }
 
 const policy = manifest.content_security_policy?.extension_pages;
-if (policy && !/script-src 'self'( 'wasm-unsafe-eval')?;/.test(policy)) {
+if (policy !== undefined && policy !== "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';") {
   problems.push(`extension pages allow scripts beyond the package: ${policy}`);
 }
 

@@ -32,4 +32,10 @@ describe("manifest", () => {
   it("never runs in incognito", () => {
     expect(manifest.incognito).toBe("not_allowed");
   });
+
+  it("runs only its own scripts, plus WebAssembly from the package", () => {
+    expect(manifest.content_security_policy).toEqual({
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+    });
+  });
 });

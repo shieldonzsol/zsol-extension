@@ -19,3 +19,9 @@ allowBuilds:
   bufferutil: false
   keccak: false
   utf-8-validate: false
+
+# The Rings SDK's Poseidon hasher: each browser build looks for its .wasm beside itself, where
+# the package ships none. The slim build is pointed at the shipped files, so the bundler packs
+# them; the fat build (both inlined as base64, 4.3 MB of JavaScript) refuses to guess.
+patchedDependencies:
+  "@lightprotocol/hasher.rs@0.2.1": patches/@lightprotocol__hasher.rs@0.2.1.patch

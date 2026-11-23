@@ -26,7 +26,8 @@ export interface PairingHandlerDeps {
   readonly extensionId: string;
   readonly origins: readonly string[];
   readonly tickets: Tickets;
-  readonly onPaired: (payload: PairingPayload) => void;
+  /** `site` is the zSol that handed the account over: the panel calls its API. */
+  readonly onPaired: (payload: PairingPayload, site: string) => void;
 }
 
 const refusal = { ok: false } as const;
@@ -71,7 +72,7 @@ export function createPairingHandler(deps: PairingHandlerDeps) {
     }
     key = null;
     deps.tickets.spend();
-    deps.onPaired(payload);
+    deps.onPaired(payload, origin);
     return { ok: true };
   };
 }
