@@ -22,7 +22,8 @@
     {
       "files": ["**/*.test.ts", "tests/**/*.ts"],
       "rules": {
-        "no-await-in-loop": "off"
+        "no-await-in-loop": "off",
+        "typescript/no-unsafe-type-assertion": "off"
       }
     }
   ]

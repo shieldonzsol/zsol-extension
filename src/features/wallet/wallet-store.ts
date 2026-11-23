@@ -197,6 +197,50 @@ async function connectAndRead(at: number): Promise<void> {
   await Promise.all([read(at), readGhosts(at)]);
 }
 
+/** One at a time: a read and a send never touch the wallet's notes at once. */
+let lane: Promise<unknown> = Promise.resolve();
+
+export function inWalletLane<T>(work: () => Promise<T>): Promise<T> {
+  const run = lane.then(work, work);
+  lane = run.catch(() => undefined);
+  return run;
+}
+
+function sync(current: Opened, requireSlot?: bigint) {
+  const { client, keys } = current;
+  if (!client || !keys) throw new Error("The wallet isn't open.");
+  return syncPersistedWallet({
+    client,
+    wallet: current.wallet,
+    keys,
+    store: current.store,
+    cipher: current.cipher,
+    ...(requireSlot === undefined ? {} : { config: { requireSlot } }),
+  });
+}
+
+/** What a send spends with: the open wallet, its keys and its client. Null until it opens. */
+export function spending() {
+  const current = opened;
+  if (view.kind !== "open" || !current?.client || !current.keys) return null;
+  return {
+    site: current.site,
+    client: current.client,
+    spender: { keypair: current.keypair, keys: current.keys, wallet: current.wallet },
+  };
+}
+
+/** Reads the wallet once a send landed at `slot`, so the balance on screen includes it. */
+export function readBack(slot: bigint): Promise<void> {
+  const at = turn;
+  const current = opened;
+  if (!current) return Promise.reject(new Error("The wallet isn't open."));
+  return inWalletLane(async () => {
+    await sync(current, slot);
+    patch(at, { balances: balancesOf(current.wallet), readAt: Date.now(), hitch: null });
+  });
+}
+
 /** Syncs what is new, keeps the sealed snapshot, and reads whether the wallet is listed. */
 async function read(at: number): Promise<void> {
   const current = opened;
@@ -206,13 +250,7 @@ async function read(at: number): Promise<void> {
   try {
     if (!navigator.onLine) throw new SiteError("offline");
     const [, registered] = await Promise.all([
-      syncPersistedWallet({
-        client: current.client,
-        wallet: current.wallet,
-        keys: current.keys,
-        store: current.store,
-        cipher: current.cipher,
-      }),
+      inWalletLane(() => sync(current)),
       isWalletRegistered({ rpc: current.client, owner: address(owner(current)) }).catch(() => null),
     ]);
     patch(at, {

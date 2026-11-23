@@ -11,6 +11,7 @@ import { browser } from "wxt/browser";
 
 import { buttonVariants } from "@/components/ui/button";
 import { formatAbout, formatShown } from "@/features/rings/amounts";
+import { useSendBusy } from "@/features/send/send-store";
 import { disconnect, retrySignIn } from "@/features/session/session-store";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +19,6 @@ import { readAge } from "./age";
 import { setAmountsHidden, useAmountsHidden } from "./use-hidden-amounts";
 import { useNow } from "./use-now";
 import {
-  closeWallet,
   openWallet,
   readAgain,
   useWallet,
@@ -62,7 +62,7 @@ const REFUSAL_WORDS: Record<Refusal, { readonly title: string; readonly body: st
   },
 };
 
-export default function WalletPlace({
+export function WalletPlace({
   seed,
   site,
   signInWallet,
@@ -72,14 +72,6 @@ export default function WalletPlace({
   readonly signInWallet: string;
 }) {
   const wallet = useWallet();
-
-  useEffect(() => {
-    void openWallet(seed, site);
-    return closeWallet;
-  }, [seed, site]);
-
-  useReadWhenBack(wallet);
-
   return (
     <div className="flex flex-col gap-4 p-4">
       {wallet.kind === "refused" ? (
@@ -98,7 +90,7 @@ export default function WalletPlace({
 }
 
 /** Reads again when the browser is back online, and when the panel shows a stale read. */
-function useReadWhenBack(wallet: WalletView) {
+export function useReadWhenBack(wallet: WalletView) {
   const hitch = wallet.kind === "opening" || wallet.kind === "open" ? wallet.hitch : null;
   const readAt = wallet.kind === "open" ? wallet.readAt : null;
   useEffect(() => {
@@ -466,6 +458,8 @@ function RefusalCard({
 }
 
 function AccountLine({ signInWallet }: { readonly signInWallet: string }) {
+  // Disconnecting forgets the wallet: a send being signed or sent finishes first.
+  const busy = useSendBusy();
   return (
     <div className="flex items-center gap-2 px-1 text-label text-muted-foreground">
       <span className="min-w-0 flex-1 truncate">
@@ -476,6 +470,8 @@ function AccountLine({ signInWallet }: { readonly signInWallet: string }) {
       </span>
       <button
         type="button"
+        disabled={busy}
+        title={busy ? "Disconnect opens once the send in progress is done." : undefined}
         onClick={() => void disconnect()}
         className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
