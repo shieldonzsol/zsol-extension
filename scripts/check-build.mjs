@@ -28,6 +28,8 @@ if (policy && !/script-src 'self'( 'wasm-unsafe-eval')?;/.test(policy)) {
 
 const remoteScript =
   /<script[^>]+src=["']https?:|importScripts\(\s*["']https?:|import\(\s*["']https?:/i;
+// Hosts of scripts Privy's SDK can load (CAPTCHA, Telegram login), stubbed out at build time.
+const remoteScriptHost = /challenges\.cloudflare\.com|js\.hcaptcha\.com|telegram\.org\/js/;
 const machinePath = /\/Users\/[^/\s"']+|\/home\/[^/\s"']+|[A-Z]:\\Users\\|node_modules\/\.pnpm\//;
 
 async function* files(dir) {
@@ -43,6 +45,8 @@ for await (const file of files(root)) {
   const text = await readFile(file, "utf8");
   const name = path.relative(root, file);
   if (remoteScript.test(text)) problems.push(`${name} loads a script from the network`);
+  const host = text.match(remoteScriptHost);
+  if (host) problems.push(`${name} names a remote script host: ${host[0]}`);
   const found = text.match(machinePath);
   if (found) problems.push(`${name} carries a machine path: ${found[0]}`);
 }

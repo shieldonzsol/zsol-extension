@@ -1,10 +1,22 @@
 import { buttonVariants } from "@/components/ui/button";
 
-import { disconnect } from "./session-store";
+import { disconnect, retrySignIn, type SignIn } from "./session-store";
 
 const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
 
-export function ConnectedScreen({ wallet }: { readonly wallet: string }) {
+const SIGN_IN_WORDS: Record<SignIn, string> = {
+  "signing-in": "Signing in to zSol…",
+  "signed-in": "Signed in to zSol.",
+  failed: "The panel couldn't sign in to zSol. Your account is still connected.",
+};
+
+export function ConnectedScreen({
+  wallet,
+  signIn,
+}: {
+  readonly wallet: string;
+  readonly signIn: SignIn;
+}) {
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-2">
@@ -23,9 +35,21 @@ export function ConnectedScreen({ wallet }: { readonly wallet: string }) {
           {short(wallet)}
         </span>
       </section>
+      <div className="flex flex-col gap-2">
+        <output className="text-sm text-pretty">{SIGN_IN_WORDS[signIn]}</output>
+        {signIn === "failed" ? (
+          <button
+            type="button"
+            onClick={retrySignIn}
+            className={buttonVariants({ size: "lg", className: "h-10 w-full" })}
+          >
+            Try signing in again
+          </button>
+        ) : null}
+      </div>
       <button
         type="button"
-        onClick={disconnect}
+        onClick={() => void disconnect()}
         className={buttonVariants({ variant: "outline", size: "lg", className: "h-10 w-full" })}
       >
         Disconnect

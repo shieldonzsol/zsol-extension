@@ -20,6 +20,7 @@ describe("manifest", () => {
     expect(manifestFor("development").externally_connectable.matches).toEqual([
       "https://zsol.cc/*",
       "https://zsol.localhost/*",
+      "http://localhost/*",
     ]);
   });
 
