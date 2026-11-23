@@ -4,6 +4,8 @@ import { createSprClient } from "@heliuslabs/spr";
 import { SignedTeePolicy, type SprClient } from "@heliuslabs/spr/client";
 import { browser } from "wxt/browser";
 
+import { authHeaders } from "@/features/privy/auth-headers";
+
 export type { SprClient } from "@heliuslabs/spr/client";
 
 /** Tells zSol which client asks, so it can say when this version is too old. */
@@ -14,28 +16,37 @@ export function clientName(): string {
 }
 
 let unanswered = 0;
+let unauthorized = 0;
 
 /** When zSol last failed to answer a call (no answer, or a server error), in ms. */
 export const lastUnanswered = () => unanswered;
+/** When zSol last answered that the panel isn't signed in, in ms. */
+export const lastUnauthorized = () => unauthorized;
 
-/** `fetch`, naming this client on every call to `site` and nowhere else. */
-export function siteFetch(site: string): typeof fetch {
+/**
+ * `fetch` for calls to `site`, and to nowhere else: names this client and, unless `open`,
+ * carries the panel's sign-in, so zSol can ask for one on any of its routes.
+ */
+export function siteFetch(site: string, open = false): typeof fetch {
   const name = clientName();
-  return (input, init) => {
+  return async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
     if (!url.startsWith(`${site}/`)) return fetch(input, init);
     const headers = new Headers(input instanceof Request ? input.headers : init?.headers);
     headers.set(CLIENT_HEADER, name);
-    return fetch(input, { ...init, headers }).then(
-      (response) => {
-        if (response.status >= 500 || response.status === 429) unanswered = Date.now();
-        return response;
-      },
-      (error: unknown) => {
-        unanswered = Date.now();
-        throw error;
-      },
-    );
+    if (!open && !headers.has("authorization")) {
+      const auth = await authHeaders().catch(() => null);
+      for (const [key, value] of Object.entries(auth ?? {})) headers.set(key, value);
+    }
+    try {
+      const response = await fetch(input, { ...init, headers });
+      if (response.status >= 500 || response.status === 429) unanswered = Date.now();
+      if (response.status === 401) unauthorized = Date.now();
+      return response;
+    } catch (error) {
+      unanswered = Date.now();
+      throw error;
+    }
   };
 }
 

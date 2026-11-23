@@ -15,7 +15,12 @@ import { address, type Address } from "@solana/kit";
 import { useSyncExternalStore } from "react";
 
 import { checkAccount } from "@/features/rings/account";
-import { lastUnanswered, ringsClient, type SprClient } from "@/features/rings/client";
+import {
+  lastUnanswered,
+  lastUnauthorized,
+  ringsClient,
+  type SprClient,
+} from "@/features/rings/client";
 import { ghostCount, heldIn, solOf, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
 import { ghostWallet, MAX_GHOST_WALLETS, privateKeypair } from "@/features/rings/keys";
 import { SiteError, type SiteFailure } from "@/features/rings/site-api";
@@ -23,6 +28,8 @@ import { snapshotStore, type SnapshotStore } from "@/features/rings/snapshot-sto
 
 /** Why the wallet can't open: zSol refused the account check. */
 export type Refusal = "signed-out" | "sanctioned" | "taken" | "refused";
+/** What a call to zSol can say about the session itself. */
+type SessionStop = Extract<Refusal, "signed-out" | "refused">;
 /** Why a read didn't finish: worth trying again. */
 export type Hitch = Exclude<SiteFailure, "signed-out" | "refused"> | "failed";
 
@@ -107,13 +114,14 @@ const balancesOf = (wallet: Wallet): Balance[] =>
   WALLET_ASSETS.map((asset) => ({ asset, amount: heldIn(wallet, asset.mint) }));
 
 /** Why work begun at `since` failed: zSol's own word, or whether zSol answered at all. */
-function hitchOf(error: unknown, since = Date.now()): Hitch | Refusal {
+function hitchOf(error: unknown, since = Date.now()): Hitch | SessionStop {
   if (error instanceof SiteError) return error.failure;
   if (!navigator.onLine) return "offline";
+  if (lastUnauthorized() >= since) return "signed-out";
   return lastUnanswered() >= since ? "unreachable" : "failed";
 }
 
-const isRefusal = (value: Hitch | Refusal): value is Refusal =>
+const isRefusal = (value: Hitch | SessionStop): value is SessionStop =>
   value === "signed-out" || value === "refused";
 
 const owner = (current: Opened): string => current.keypair.shieldedAddress().solanaAddress();
@@ -262,7 +270,11 @@ async function read(at: number): Promise<void> {
     });
   } catch (error) {
     const why = hitchOf(error, since);
-    patch(at, { reading: false, hitch: isRefusal(why) ? "failed" : why });
+    if (why === "signed-out") {
+      if (at === turn) publish({ kind: "refused", refusal: why, address: owner(current) });
+      return;
+    }
+    patch(at, { reading: false, hitch: why === "refused" ? "failed" : why });
   }
 }
 

@@ -52,7 +52,8 @@ function addressIn(body: unknown, name: string): Address {
 
 /** zSol's fee wallet's public setup: who pays the network fee, where the fee goes, and whether it can pay now. */
 export async function sponsorSetup(site: string): Promise<SponsorSetup> {
-  const response = await siteFetch(site)(`${site}/api/sponsor`, { cache: "no-store" });
+  // Public terms, the same for everyone: asked without the panel's sign-in.
+  const response = await siteFetch(site, true)(`${site}/api/sponsor`, { cache: "no-store" });
   const body: unknown = await response.json().catch(() => null);
   if (response.status === 503 && field(body, "error") === "unavailable") {
     return {
