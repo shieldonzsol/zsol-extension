@@ -3,7 +3,14 @@
 import { buildStopOf, type BuildStop } from "@/features/rings/build-errors";
 import { mostWithFee } from "@/features/rings/amount-input";
 
-import { landedOf, SendUnanswered, SendUnconfirmed, SponsorRefused, SyncBehind } from "./sponsor";
+import {
+  landedOf,
+  SendUnanswered,
+  SendUnconfirmed,
+  SponsorRefused,
+  SyncBehind,
+  type SponsorBudget,
+} from "./sponsor";
 
 export type FailureKind =
   | "unconfirmed"
@@ -15,6 +22,8 @@ export type FailureKind =
   | "paused"
   | "stale"
   | "busy"
+  /** The account's budget of private actions is used up for now. */
+  | "budget"
   | "offline"
   | "unreachable"
   | Exclude<BuildStop, "build">
@@ -27,6 +36,7 @@ export interface FailureFacts {
   readonly signature?: string;
   /** Seconds to wait before trying again. */
   readonly retryAfter?: number;
+  readonly budget?: SponsorBudget;
 }
 
 /** How long the SDK holds what a built transaction would spend. */
@@ -37,6 +47,8 @@ const BY_CODE: Readonly<Record<string, FailureKind>> = {
   "signed-out": "signed-out",
   unavailable: "paused",
   "fee-short": "stale",
+  // zSol's fee wallet would have paid something for the trader: built on old terms.
+  "rent-unpaid": "stale",
   busy: "busy",
   "failed-on-chain": "failed-on-chain",
 };
@@ -56,11 +68,14 @@ export function failureOf(error: unknown, online: boolean): FailureFacts {
   if (error instanceof SendUnanswered) return { kind: "unanswered", maybeMoved: true };
   if (!online) return { kind: "offline", maybeMoved: false };
   if (error instanceof SponsorRefused) {
-    const kind = BY_CODE[error.code] ?? "failed";
+    const kind = error.budget ? "budget" : (BY_CODE[error.code] ?? "failed");
     const wait = error.retryAfterSeconds;
-    return wait !== undefined && wait > 0
-      ? { kind, maybeMoved: false, retryAfter: Math.ceil(wait) }
-      : { kind, maybeMoved: false };
+    return {
+      kind,
+      maybeMoved: false,
+      ...(wait !== undefined && wait > 0 ? { retryAfter: Math.ceil(wait) } : {}),
+      ...(error.budget ? { budget: error.budget } : {}),
+    };
   }
   const stop = buildStopOf(error);
   if (stop === "held") return { kind: "held", maybeMoved: false, retryAfter: HELD_SECONDS };

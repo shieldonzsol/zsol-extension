@@ -17,11 +17,14 @@ export function clientName(): string {
 
 let unanswered = 0;
 let unauthorized = 0;
+let busy = { at: 0, retryAfter: 0 };
 
 /** When zSol last failed to answer a call (no answer, or a server error), in ms. */
 export const lastUnanswered = () => unanswered;
 /** When zSol last answered that the panel isn't signed in, in ms. */
 export const lastUnauthorized = () => unauthorized;
+/** When zSol last answered that this account asks too often, and the seconds it said to wait. */
+export const lastBusy = () => busy;
 
 /**
  * `fetch` for calls to `site`, and to nowhere else: names this client and, unless `open`,
@@ -42,6 +45,10 @@ export function siteFetch(site: string, open = false): typeof fetch {
       const response = await fetch(input, { ...init, headers });
       if (response.status >= 500 || response.status === 429) unanswered = Date.now();
       if (response.status === 401) unauthorized = Date.now();
+      if (response.status === 429) {
+        const wait = Number(response.headers.get("retry-after"));
+        busy = { at: Date.now(), retryAfter: Number.isFinite(wait) && wait > 0 ? wait : 0 };
+      }
       return response;
     } catch (error) {
       unanswered = Date.now();

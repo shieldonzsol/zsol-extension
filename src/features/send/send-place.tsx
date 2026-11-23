@@ -30,7 +30,7 @@ import {
   type SendState,
 } from "./send-store";
 import type { SendStep } from "./sponsor";
-import { AMOUNT_WORDS, FAILURE_WORDS, STEP_WORDS, STEPS } from "./words";
+import { AMOUNT_WORDS, FAILURE_WORDS, feeWords, STEP_WORDS, STEPS } from "./words";
 
 const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
 /** A review older than this may carry a blockhash that no longer lands: prepare it again. */
@@ -147,6 +147,7 @@ function SendForm({
       ? (wallet.balances?.find((balance) => balance.asset.mint === asset.mint)?.amount ?? 0n)
       : 0n;
   const charged = terms.feeAssets.has(asset.mint);
+  const least = charged ? (terms.sendFeeMinimums.get(asset.mint) ?? 0n) : 0n;
   const most = mostWithFee(held, (amount) => feeOn(asset.mint, amount, terms));
   const typed = readAmount(draft.amountText, asset.decimals);
   const fee = typed.ok ? feeOn(asset.mint, typed.amount, terms) : null;
@@ -249,14 +250,16 @@ function SendForm({
           </div>
           <div id={ids.amountNote} className="text-label text-pretty">
             {amountProblem ? (
-              <AmountProblemLine problem={amountProblem} asset={asset} rate={rate} />
+              <AmountProblemLine problem={amountProblem} asset={asset} rate={rate} least={least} />
             ) : (
               <span className="text-muted-foreground">
-                {fee !== null && fee > 0n
-                  ? `zSol's fee is ${rate}: ${formatAmount(fee, asset.decimals)} ${asset.symbol}, paid privately in the same send. zSol pays the network fee.`
-                  : charged
-                    ? `zSol's fee is ${rate}, paid privately in the same send. zSol pays the network fee.`
-                    : "zSol pays the network fee."}
+                {feeWords({
+                  rate,
+                  least: least > 0n ? formatAmount(least, asset.decimals) : null,
+                  fee: fee !== null && fee > 0n ? formatAmount(fee, asset.decimals) : null,
+                  symbol: asset.symbol,
+                  charged,
+                })}
               </span>
             )}
           </div>
@@ -370,11 +373,14 @@ function AmountProblemLine({
   problem,
   asset,
   rate,
+  least,
 }: {
   readonly problem: Extract<FormProblem, { kind: "amount" | "short" }>;
   readonly asset: Asset;
   /** zSol's fee rate as people read it: "0.1%". */
   readonly rate: string;
+  /** zSol's least fee on this token, zero when it states none. */
+  readonly least: bigint;
 }) {
   if (problem.kind === "amount") {
     return (
@@ -394,7 +400,7 @@ function AmountProblemLine({
       </span>
       <span className="text-muted-foreground">
         {lack.fee > 0n
-          ? `It holds ${show(lack.held)} ${asset.symbol}. This needs ${show(lack.needed)} ${asset.symbol}: ${show(lack.amount)} plus zSol's ${rate} fee of ${show(lack.fee)}.`
+          ? `It holds ${show(lack.held)} ${asset.symbol}. This needs ${show(lack.needed)} ${asset.symbol}: ${show(lack.amount)} plus zSol's ${least > 0n && lack.fee === least ? "least" : rate} fee of ${show(lack.fee)}.`
           : `It holds ${show(lack.held)} ${asset.symbol}. This needs ${show(lack.needed)} ${asset.symbol}.`}
       </span>
       {lack.most > 0n ? (
@@ -434,6 +440,15 @@ function PrepareFailure({ facts }: { readonly facts: FailureFacts }) {
         <p className="text-label text-pretty text-muted-foreground">{words.body}</p>
         {facts.retryAfter ? <Countdown seconds={facts.retryAfter} /> : null}
       </div>
+      {facts.kind === "signed-out" ? (
+        <button
+          type="button"
+          onClick={retrySignIn}
+          className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
+        >
+          Sign in again
+        </button>
+      ) : null}
     </Card>
   );
 }
@@ -472,9 +487,13 @@ function ReviewCard({
           </span>
         </div>
         <p className="text-label text-pretty text-muted-foreground">
-          {sent.fee > 0n
-            ? `zSol's fee is ${percentOf(sent.feeBps)}: ${show(sent.fee)}, paid privately in the same send. zSol pays the network fee.`
-            : "zSol pays the network fee."}
+          {feeWords({
+            rate: percentOf(sent.feeBps),
+            least: sent.feeLeast > 0n ? formatAmount(sent.feeLeast, sent.asset.decimals) : null,
+            fee: formatAmount(sent.fee, sent.asset.decimals),
+            symbol: sent.asset.symbol,
+            charged: sent.fee > 0n,
+          })}
         </p>
         <div className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-label text-pretty">
           <div className="flex flex-col gap-1">

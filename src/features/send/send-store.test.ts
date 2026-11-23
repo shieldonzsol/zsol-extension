@@ -27,9 +27,13 @@ describe("a send's draft", () => {
   });
 
   it("charges zSol's stated rate on the tokens zSol charges, nothing on others", () => {
-    const terms = { feeAssets: new Set([SOL]), sendFeeBps: 10n };
+    const terms = { feeAssets: new Set([SOL]), sendFeeBps: 10n, sendFeeMinimums: new Map() };
     expect(feeOn(SOL, 1_000_000n, terms)).toBe(1_000n);
     expect(feeOn(USDC, 1_000_000n, terms)).toBe(0n);
     expect(feeOn(SOL, 1_000_000n, { ...terms, sendFeeBps: 25n })).toBe(2_500n);
+    const floored = { ...terms, sendFeeMinimums: new Map([[SOL, 30_000n]]) };
+    expect(feeOn(SOL, 1_000_000n, floored)).toBe(30_000n);
+    expect(feeOn(SOL, 100_000_000n, floored)).toBe(100_000n);
+    expect(feeOn(USDC, 1_000_000n, floored)).toBe(0n);
   });
 });

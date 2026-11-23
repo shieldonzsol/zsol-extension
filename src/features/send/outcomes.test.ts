@@ -40,6 +40,15 @@ describe("what stopped a send", () => {
       retryAfter: 5,
     });
     expect(failureOf(new SponsorRefused("output-mismatch"), true).kind).toBe("failed");
+    expect(failureOf(new SponsorRefused("rent-unpaid"), true).kind).toBe("stale");
+    expect(
+      failureOf(new SponsorRefused("busy", 1200, { window: "hour", limit: 30 }), true),
+    ).toEqual({
+      kind: "budget",
+      maybeMoved: false,
+      retryAfter: 1200,
+      budget: { window: "hour", limit: 30 },
+    });
     expect(
       failureOf({ code: "WALLET_BUILD_TRANSFER", causeCode: "WALLET_NOTE_RESERVED" }, true),
     ).toMatchObject({ kind: "held", retryAfter: 120 });

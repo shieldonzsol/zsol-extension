@@ -33,6 +33,15 @@ describe("a fee in basis points", () => {
     expect(feeAt(1_000_000n, 0n)).toBe(0n);
   });
 
+  it("is never under its minimum, and nothing on nothing", () => {
+    expect(feeAt(1_000_000n, 10n, 30_000n)).toBe(30_000n);
+    expect(feeAt(50_000_000n, 10n, 30_000n)).toBe(50_000n);
+    expect(feeAt(0n, 10n, 30_000n)).toBe(0n);
+    const most = mostWithFee(18_038_840n, (amount) => feeAt(amount, 10n, 30_000n));
+    expect(most).toBe(18_008_840n);
+    expect(mostWithFee(30_000n, (amount) => feeAt(amount, 10n, 30_000n))).toBe(0n);
+  });
+
   it("rounds up, so a fee owed is never zero", () => {
     expect(sendFee(1n)).toBe(1n);
     expect(sendFee(10_000n)).toBe(10n);

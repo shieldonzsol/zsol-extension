@@ -55,10 +55,14 @@ export function mostWithFee(held: bigint, feeOf: (amount: bigint) => bigint): bi
 
 const BPS = 10_000n;
 
-/** A fee of `bps` basis points on `amount`, rounded up so a fee that is owed is never zero. */
-export function feeAt(amount: bigint, bps: bigint): bigint {
-  if (amount <= 0n || bps <= 0n) return 0n;
-  return (amount * bps + BPS - 1n) / BPS;
+/**
+ * A fee of `bps` basis points on `amount`, rounded up so a fee that is owed is never zero, and
+ * never under `minimum`. Nothing is owed on nothing.
+ */
+export function feeAt(amount: bigint, bps: bigint, minimum = 0n): bigint {
+  if (amount <= 0n) return 0n;
+  const fee = bps <= 0n ? 0n : (amount * bps + BPS - 1n) / BPS;
+  return fee < minimum ? minimum : fee;
 }
 
 /** Basis points as a percentage people read: 10 is "0.1%". */

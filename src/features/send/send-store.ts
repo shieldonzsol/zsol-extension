@@ -7,6 +7,7 @@ import { address, isAddress, type Address, type Transaction } from "@solana/kit"
 import { useSyncExternalStore } from "react";
 
 import { feeAt, readAmount, type AmountProblem } from "@/features/rings/amount-input";
+import { lastBusy, lastUnauthorized } from "@/features/rings/client";
 import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
 import { inWalletLane, readAgain, readBack, spending } from "@/features/wallet/wallet-store";
 
@@ -44,6 +45,8 @@ export interface Review {
   readonly fee: bigint;
   /** The rate the fee was worked out at, in basis points. */
   readonly feeBps: bigint;
+  /** zSol's least fee on a send of this token, zero when it states none. */
+  readonly feeLeast: bigint;
   readonly transaction: Transaction;
   /** The draft it was built from, to reuse it when nothing changed. */
   readonly key: string;
@@ -113,19 +116,22 @@ async function setupFor(site: string): Promise<SponsorSetup> {
 }
 
 /** zSol's fee terms: which tokens pay it, and at what rate. */
-export type FeeTerms = Pick<SponsorSetup, "feeAssets" | "sendFeeBps">;
+export type FeeTerms = Pick<SponsorSetup, "feeAssets" | "sendFeeBps" | "sendFeeMinimums">;
 
 // What the form shows until zSol's own terms are read.
 const ASSUMED_TERMS: FeeTerms = {
   feeAssets: new Set(WALLET_ASSETS.map((each) => each.mint)),
   sendFeeBps: DEFAULT_SEND_FEE_BPS,
+  sendFeeMinimums: new Map(),
 };
 
 const currentTerms = (): FeeTerms => setup?.value ?? ASSUMED_TERMS;
 
 /** zSol's fee on a send of `amount` of `mint`: its rate on the tokens it charges, nothing on others. */
 export function feeOn(mint: string, amount: bigint, terms: FeeTerms = currentTerms()): bigint {
-  return terms.feeAssets.has(mint) ? feeAt(amount, terms.sendFeeBps) : 0n;
+  return terms.feeAssets.has(mint)
+    ? feeAt(amount, terms.sendFeeBps, terms.sendFeeMinimums.get(mint) ?? 0n)
+    : 0n;
 }
 
 /** Reads zSol's fee terms ahead of the first review, so the form shows them as they are. */
@@ -174,6 +180,7 @@ export async function review(signInWallet: string): Promise<void> {
     return;
   }
   setState({ kind: "form", preparing: true, problem: null, failure: null });
+  const started = Date.now();
   try {
     const fees = await setupFor(open.site);
     if (fees.paused) {
@@ -211,19 +218,36 @@ export async function review(signInWallet: string): Promise<void> {
       amount: read.amount,
       fee,
       feeBps: fees.sendFeeBps,
+      feeLeast: fees.feeAssets.has(asset.mint) ? (fees.sendFeeMinimums.get(asset.mint) ?? 0n) : 0n,
       transaction,
       key,
       builtAt: Date.now(),
     };
     setState({ kind: "review", review: lastReview });
   } catch (error) {
-    const facts = failureOf(error, navigator.onLine);
+    const facts = prepareFailure(error, started);
     setState(
       facts.kind === "recipient"
         ? { kind: "form", preparing: false, problem: { kind: "no-wallet" }, failure: null }
         : { kind: "form", preparing: false, problem: null, failure: facts },
     );
   }
+}
+
+/** Why preparing failed: zSol's own answers while it was built say more than the SDK's error. */
+function prepareFailure(error: unknown, started: number): FailureFacts {
+  if (navigator.onLine && lastUnauthorized() >= started) {
+    return { kind: "signed-out", maybeMoved: false };
+  }
+  const busy = lastBusy();
+  if (navigator.onLine && busy.at >= started) {
+    return {
+      kind: "busy",
+      maybeMoved: false,
+      ...(busy.retryAfter > 0 ? { retryAfter: Math.ceil(busy.retryAfter) } : {}),
+    };
+  }
+  return failureOf(error, navigator.onLine);
 }
 
 /** One payment to `to`, and zSol's fee as one more hidden output to its treasury. */

@@ -59,6 +59,10 @@ export const FAILURE_WORDS: Record<FailureKind, { readonly title: string; readon
       title: "Too many requests from here just now. Nothing moved.",
       body: "Wait a moment, then try again.",
     },
+    budget: {
+      title: "You've reached zSol's limit on private actions for now. Nothing moved.",
+      body: "zSol pays the network fee for a set number of private actions per account, so no one account can run its fee wallet dry. Your private balance is as it was.",
+    },
     offline: { title: "You're offline. Nothing moved.", body: "Reconnect, then try again." },
     unreachable: {
       title: "zSol couldn't be reached. Nothing moved.",
@@ -89,3 +93,27 @@ export const FAILURE_WORDS: Record<FailureKind, { readonly title: string; readon
       body: "Your private balance is as it was. Try again.",
     },
   };
+
+/** How zSol's fee on a send reads: the figure when an amount is typed, the terms when not. */
+export function feeWords(input: {
+  /** The rate as people read it: "0.1%". */
+  readonly rate: string;
+  /** The token's least fee as people read it, or null when zSol states none. */
+  readonly least: string | null;
+  /** This send's fee as people read it, or null before an amount is typed. */
+  readonly fee: string | null;
+  readonly symbol: string;
+  /** zSol charges its fee on this token. */
+  readonly charged: boolean;
+}): string {
+  const { rate, least, fee, symbol } = input;
+  if (!input.charged) return "zSol pays the network fee.";
+  if (least !== null) {
+    return fee === null
+      ? `zSol's fee is ${rate}, or at least ${least} ${symbol} on a small send. It's paid privately in the same send, and zSol pays the network fee.`
+      : `zSol's fee is ${fee} ${symbol}: ${rate}, or zSol's least fee on a small send. It's paid privately in the same send, and zSol pays the network fee.`;
+  }
+  return fee === null
+    ? `zSol's fee is ${rate}, paid privately in the same send. zSol pays the network fee.`
+    : `zSol's fee is ${rate}: ${fee} ${symbol}, paid privately in the same send. zSol pays the network fee.`;
+}

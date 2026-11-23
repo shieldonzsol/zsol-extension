@@ -26,6 +26,8 @@ export interface SponsorSetup {
   readonly feeAssets: ReadonlySet<string>;
   /** zSol's fee on a send, in basis points, as zSol states it now. */
   readonly sendFeeBps: bigint;
+  /** The least a send's fee is, by token, in its smallest unit. */
+  readonly sendFeeMinimums: ReadonlyMap<string, bigint>;
   /** Null when private actions can run now; otherwise why they can't. */
   readonly paused: "fee-wallet" | "treasury" | "off" | null;
 }
@@ -34,6 +36,11 @@ export interface SponsorSetup {
 export const DEFAULT_SEND_FEE_BPS = 10n;
 /** 1%: the most this panel accepts as a send's fee. */
 export const MAX_SEND_FEE_BPS = 100;
+/** The most this panel accepts as a send's least fee: 0.001 SOL, 0.1 USDC. */
+export const MAX_SEND_FEE_MINIMUMS: Readonly<Record<string, bigint>> = {
+  "11111111111111111111111111111111": 1_000_000n,
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 100_000n,
+};
 
 /** zSol answered, but not with its fee wallet's setup. */
 export class SetupUnread extends Error {
@@ -50,27 +57,37 @@ function addressIn(body: unknown, name: string): Address {
   return address(value);
 }
 
-/** zSol's fee wallet's public setup: who pays the network fee, where the fee goes, and whether it can pay now. */
-export async function sponsorSetup(site: string): Promise<SponsorSetup> {
-  // Public terms, the same for everyone: asked without the panel's sign-in.
-  const response = await siteFetch(site, true)(`${site}/api/sponsor`, { cache: "no-store" });
-  const body: unknown = await response.json().catch(() => null);
-  if (response.status === 503 && field(body, "error") === "unavailable") {
+/** What zSol answered for its fee wallet's setup, read and checked. */
+export function readSetup(status: number, body: unknown): SponsorSetup {
+  if (status === 503 && field(body, "error") === "unavailable") {
     return {
       feePayer: address("11111111111111111111111111111111"),
       treasury: address("11111111111111111111111111111111"),
       feeAssets: new Set(),
       sendFeeBps: DEFAULT_SEND_FEE_BPS,
+      sendFeeMinimums: new Map(),
       paused: "off",
     };
   }
-  if (!response.ok) throw new SetupUnread(String(response.status));
+  if (status < 200 || status >= 300) throw new SetupUnread(String(status));
   const assets = field(body, "feeAssets");
   const paused = field(body, "paused");
   const bps = field(body, "sendFeeBps");
-  // The panel never builds a send whose fee is above this, whatever zSol answers.
+  // The panel never builds a send whose fee is above these, whatever zSol answers.
   if (typeof bps === "number" && (!Number.isInteger(bps) || bps < 0 || bps > MAX_SEND_FEE_BPS)) {
     throw new SetupUnread("sendFeeBps");
+  }
+  const minimums = new Map<string, bigint>();
+  const stated = field(body, "sendFeeMinimums");
+  for (const [mint, value] of Object.entries(
+    typeof stated === "object" && stated !== null ? stated : {},
+  )) {
+    const most = MAX_SEND_FEE_MINIMUMS[mint];
+    if (most === undefined) continue;
+    if (typeof value !== "string" || !/^\d{1,20}$/.test(value) || BigInt(value) > most) {
+      throw new SetupUnread("sendFeeMinimums");
+    }
+    minimums.set(mint, BigInt(value));
   }
   return {
     feePayer: addressIn(body, "feePayer"),
@@ -79,6 +96,7 @@ export async function sponsorSetup(site: string): Promise<SponsorSetup> {
       Array.isArray(assets) ? assets.filter((each) => typeof each === "string") : [],
     ),
     sendFeeBps: typeof bps === "number" ? BigInt(bps) : DEFAULT_SEND_FEE_BPS,
+    sendFeeMinimums: minimums,
     paused:
       paused === "fee-wallet" || paused === "treasury"
         ? paused
@@ -88,15 +106,39 @@ export async function sponsorSetup(site: string): Promise<SponsorSetup> {
   };
 }
 
+/** zSol's fee wallet's public setup: who pays the network fee, where the fee goes, and its terms. */
+export async function sponsorSetup(site: string): Promise<SponsorSetup> {
+  // Public terms, the same for everyone: asked without the panel's sign-in.
+  const response = await siteFetch(site, true)(`${site}/api/sponsor`, { cache: "no-store" });
+  return readSetup(response.status, await response.json().catch(() => null));
+}
+
+/** How many private actions zSol's fee wallet pays for per account, in one window. */
+export interface SponsorBudget {
+  readonly window: "hour" | "day";
+  readonly limit: number;
+}
+
 /** zSol's fee wallet said no: `code` names why. */
 export class SponsorRefused extends Error {
   override readonly name = "SponsorRefused";
   constructor(
     readonly code: string,
     readonly retryAfterSeconds?: number,
+    /** The account's budget is used up. */
+    readonly budget?: SponsorBudget,
   ) {
     super(`zSol's fee wallet refused: ${code}`);
   }
+}
+
+function budgetIn(answer: unknown): SponsorBudget | undefined {
+  const budget = field(answer, "budget");
+  const window = field(budget, "window");
+  const limit = field(budget, "limit");
+  return (window === "hour" || window === "day") && typeof limit === "number"
+    ? { window, limit }
+    : undefined;
 }
 
 /** Sent, but not seen landing yet: it may still land. */
@@ -185,6 +227,7 @@ export async function submitSponsored(input: {
     throw new SponsorRefused(
       response.status === 429 ? "busy" : typeof code === "string" ? code : "failed",
       typeof wait === "number" ? wait : undefined,
+      budgetIn(answer),
     );
   }
   const sent = toSignature(signature);
