@@ -15,7 +15,9 @@ import { placeHref } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
 import { AccountCard } from "@/features/lock/account-card";
 import { PasskeyOffer } from "@/features/lock/passkey-offer";
+import { fundGhost } from "@/features/ghost/ghost-pay-store";
 import { PublicMoneyCard } from "@/features/move/public-money-card";
+import { MAX_GHOST_WALLETS } from "@/features/rings/keys";
 import { formatAbout, formatShown } from "@/features/rings/amounts";
 import { retrySignIn } from "@/features/session/session-store";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,7 @@ import {
   type Hitch,
   type Refusal,
   type WalletView,
+  ghostKeys,
 } from "./wallet-store";
 
 type Opened = Extract<WalletView, { kind: "opening" | "open" }>;
@@ -90,7 +93,7 @@ export function WalletPlace({
           {wallet.kind === "open" ? (
             <>
               <PublicMoneyCard signInWallet={signInWallet} />
-              <GhostCard ghosts={wallet.ghosts} site={site} retry={wallet.hitch === null} />
+              <GhostCard ghosts={wallet.ghosts} retry={wallet.hitch === null} />
               <PasskeyOffer on={passkey} />
             </>
           ) : null}
@@ -415,13 +418,31 @@ function CopyButton({ value, label }: { readonly value: string; readonly label: 
   );
 }
 
+/** Funds the ghost wallet numbered `index`, made from the seed when it is asked for. */
+function NewGhostButton({ index, label }: { readonly index: number; readonly label: string }) {
+  const [making, setMaking] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={making}
+      onClick={() => {
+        const made = ghostKeys(index);
+        if (!made) return;
+        setMaking(true);
+        void made.then((ghost) => fundGhost(index, ghost.address)).finally(() => setMaking(false));
+      }}
+      className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
+    >
+      {label}
+    </button>
+  );
+}
+
 function GhostCard({
   ghosts,
-  site,
   retry,
 }: {
   readonly ghosts: Ghosts | null;
-  readonly site: string;
   /** Its own Try again, unless the balance above already offers one. */
   readonly retry: boolean;
 }) {
@@ -437,10 +458,10 @@ function GhostCard({
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">No ghost wallets yet.</p>
           <p className="text-label text-pretty text-muted-foreground">
-            A ghost wallet trades in public with nothing on chain tying it to you. Make one from
-            Trade on zsol.cc.
+            A ghost wallet trades in public with nothing on chain tying it to you. Fund your first
+            one through Ghost Route.
           </p>
-          <ExternalLink href={`${site}/trade`}>Trade on zsol.cc</ExternalLink>
+          <NewGhostButton index={0} label="Fund your first ghost wallet" />
         </div>
       ) : null}
       {rows.length > 0 ? (
@@ -464,10 +485,21 @@ function GhostCard({
                     ? "Hidden"
                     : `${formatAbout(row.sol, 9, 4)} SOL`}
               </span>
+              <button
+                type="button"
+                onClick={() => fundGhost(row.index, row.address)}
+                className={buttonVariants({ variant: "outline", size: "xs" })}
+                aria-label={`Fund Ghost ${row.index + 1} through Ghost Route`}
+              >
+                Fund
+              </button>
               <CopyButton value={row.address} label={`Copy Ghost ${row.index + 1}'s address`} />
             </li>
           ))}
         </ul>
+      ) : null}
+      {rows.length > 0 && !reading && rows.length < MAX_GHOST_WALLETS ? (
+        <NewGhostButton index={rows.length} label="Fund a new ghost wallet" />
       ) : null}
       {rows.length > 0 && ghosts?.reading ? (
         <p className="text-label text-muted-foreground">Looking for more…</p>

@@ -360,6 +360,8 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
     edit,
     another,
     forget,
+    /** What it is doing now, read outside React. */
+    peek: currentState,
     useState: () => useSyncExternalStore(subscribe, currentState, currentState),
     useDraft: () => useSyncExternalStore(subscribe, currentDraft, currentDraft),
   };

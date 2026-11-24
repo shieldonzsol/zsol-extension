@@ -200,9 +200,18 @@ function PayForm({
           label="To"
           placeholder="Their Solana address"
           value={draft.to}
-          onChange={(to) => setDraft({ to })}
+          onChange={(to) => setDraft({ to, ghost: null })}
           invalid={toProblem !== null}
-          note={toProblem ? <Problem problem={toProblem} /> : null}
+          note={
+            toProblem ? (
+              <Problem problem={toProblem} />
+            ) : draft.ghost === null ? null : (
+              <span className="text-muted-foreground">
+                Ghost {String(draft.ghost + 1)}: one of your ghost wallets. Fund it ahead of time:
+                money that lands seconds before a trade is easy to match by size and time.
+              </span>
+            )
+          }
         />
         <AmountField
           id={ids.amount}

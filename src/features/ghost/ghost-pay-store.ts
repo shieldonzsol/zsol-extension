@@ -51,6 +51,8 @@ export interface GhostPayDraft {
   readonly plan: PlanName | null;
   /** A receiver on zSol gets it in their private balance unless this is off. */
   readonly shield: boolean;
+  /** It funds one of this wallet's own ghost wallets: its number, from 0. */
+  readonly ghost: number | null;
 }
 
 export type GhostPayProblem =
@@ -115,8 +117,8 @@ let asks = 0;
 
 const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
   kind: "ghost-pay",
-  empty: () => ({ to: "", amountText: "", plan: null, shield: true }),
-  another: (draft) => ({ ...draft, to: "", amountText: "" }),
+  empty: () => ({ to: "", amountText: "", plan: null, shield: true, ghost: null }),
+  another: (draft) => ({ ...draft, to: "", amountText: "", ghost: null }),
   check: (draft, { own }) => draftProblem(draft, own),
   // Each review shuffles its parts afresh, and its plan gets a name of its own.
   keyOf: () => String((asks += 1)),
@@ -256,3 +258,14 @@ export const {
 } = ghostPay;
 export const useGhostPay = ghostPay.useState;
 export const useGhostPayDraft = ghostPay.useDraft;
+
+/** Opens Ghost pay to fund one of this wallet's ghost wallets. */
+export function fundGhost(index: number, to: string): void {
+  const now = ghostPay.peek().kind;
+  // A payment on its way keeps its screen; any other starts afresh for this ghost wallet.
+  if (now !== "sending") {
+    if (now !== "form") ghostPay.another();
+    setDraft({ to, ghost: index, amountText: "" });
+  }
+  window.location.hash = "#/ghost-pay";
+}
