@@ -316,8 +316,19 @@ export function Paused({ why }: { readonly why: "fee-wallet" | "treasury" | "off
   );
 }
 
-export function PrepareFailure({ facts }: { readonly facts: FailureFacts }) {
-  const words = FAILURE_WORDS[facts.kind];
+/** An action's own words for some failures, over the shared ones. */
+export type FailureWords = Partial<
+  Record<FailureFacts["kind"], { readonly title: string; readonly body: string }>
+>;
+
+export function PrepareFailure({
+  facts,
+  words: own,
+}: {
+  readonly facts: FailureFacts;
+  readonly words?: FailureWords;
+}) {
+  const words = own?.[facts.kind] ?? FAILURE_WORDS[facts.kind];
   return (
     <Card>
       <div role="alert" className="flex flex-col gap-1.5">
@@ -461,8 +472,8 @@ export function Done({
   readonly order: string;
   readonly signature: string;
   readonly site: string;
-  readonly again: string;
-  readonly onAgain: () => void;
+  readonly again?: string;
+  readonly onAgain?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -474,16 +485,22 @@ export function Done({
         </output>
         <ExternalLink href={`${site}/tx/${signature}`}>See what the public sees</ExternalLink>
       </Card>
-      <button
-        type="button"
-        onClick={onAgain}
-        className={buttonVariants({ size: "lg", className: "h-10 w-full" })}
-      >
-        {again}
-      </button>
+      {again && onAgain ? (
+        <button
+          type="button"
+          onClick={onAgain}
+          className={buttonVariants({ size: "lg", className: "h-10 w-full" })}
+        >
+          {again}
+        </button>
+      ) : null}
       <a
         href={placeHref("wallet")}
-        className={buttonVariants({ variant: "outline", size: "lg", className: "h-10 w-full" })}
+        className={buttonVariants({
+          variant: again && onAgain ? "outline" : "default",
+          size: "lg",
+          className: "h-10 w-full",
+        })}
       >
         Back to your wallet
       </a>
@@ -506,6 +523,7 @@ export function Failed({
   changeLabel,
   onDifferentReceiver,
   onSmaller,
+  words: own,
 }: {
   readonly facts: FailureFacts;
   readonly checking: boolean;
@@ -522,8 +540,9 @@ export function Failed({
   readonly onDifferentReceiver?: () => void;
   /** Fills in a smaller amount. */
   readonly onSmaller?: (amountText: string) => void;
+  readonly words?: FailureWords;
 }) {
-  const words = FAILURE_WORDS[facts.kind];
+  const words = own?.[facts.kind] ?? FAILURE_WORDS[facts.kind];
   const half = amount / 2n;
   const primary = (() => {
     switch (facts.kind) {

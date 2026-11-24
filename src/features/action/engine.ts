@@ -17,6 +17,7 @@ import {
   submitSponsored,
   type Landed,
   type SendStep,
+  type SponsorKind,
   type SponsorSetup,
 } from "./sponsor";
 import { staleTerms, termsFor } from "./terms";
@@ -93,6 +94,12 @@ export interface ActionSpec<D, P, F extends Prepared> {
   /** What a failure the SDK reports about a receiver becomes, if anything. */
   readonly recipientProblem?: P;
   readonly facts: (review: Built<F>) => OrderFacts;
+  /** How zSol takes it; a private action unless said. */
+  readonly sponsorKind?: SponsorKind;
+  /** Whether a pause of zSol's stops this action; every pause does unless said. */
+  readonly stoppedBy?: (why: NonNullable<SponsorSetup["paused"]>) => boolean;
+  /** Runs once it landed and was read back. */
+  readonly afterDone?: (review: Built<F>) => void;
 }
 
 /** A built action is reused within this, while its blockhash is still good. */
@@ -182,7 +189,7 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
     const asked = draft;
     try {
       const fees = await termsFor(context.open.site);
-      if (fees.paused) {
+      if (fees.paused && (spec.stoppedBy?.(fees.paused) ?? true)) {
         setState(formState({ kind: "paused", why: fees.paused }));
         return;
       }
@@ -225,6 +232,7 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
         client: open.client,
         spender: open.spender,
         transaction: sent.transaction,
+        ...(spec.sponsorKind ? { kind: spec.sponsorKind } : {}),
         onStep: (step) => {
           handle.at(ORDER_STEP[step]);
           setState({ kind: "sending", review: sent, step, order: handle.id });
@@ -235,6 +243,7 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
       });
       handle.done();
       setState({ kind: "done", review: sent, signature, order: handle.id });
+      spec.afterDone?.(sent);
     } catch (error) {
       const facts = failureOf(error, navigator.onLine);
       if (facts.kind === "landed-unsynced") handle.done();
@@ -270,6 +279,7 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
     if (landed === "landed") {
       order?.done();
       setState({ kind: "done", review: sent, signature: facts.signature, order: id });
+      spec.afterDone?.(sent);
     } else if (landed === "failed") {
       order?.stop(FAILURE_WORDS["failed-on-chain"]);
       setState({

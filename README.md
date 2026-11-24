@@ -19,8 +19,8 @@ Helius Privacy Rings.
 
 > [!IMPORTANT]
 > zSol for Chrome is in early development and not in the Chrome Web Store yet. It shows your
-> private balance and ghost wallets and sends dark; for everything else, use zSol at
-> [zsol.cc](https://zsol.cc).
+> private balance and ghost wallets, sends dark, pays many, unshields and moves public money in;
+> for everything else, use zSol at [zsol.cc](https://zsol.cc).
 
 ## What it does
 
@@ -43,7 +43,9 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 - [ ] **Trade:** swap from a ghost wallet or your private balance, in one click
 - [x] **Send dark** from your private balance
 - [x] **Orders:** every action with its id, sealed on your device, until it lands
-- [x] **Unshield** to any address, a new token account paid from your private SOL
+- [x] **Unshield** to any address, its network fee and a new token account paid from your
+      private SOL
+- [x] **Move to private:** what reached your zSol address in public, into your private balance
 - [x] **Pay many:** up to 14 zSol addresses in one private transaction, a list pasted or a CSV
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites
@@ -121,6 +123,8 @@ Every line the extension runs is in this repository. Good places to start:
 | Where the wallet is kept                    | [`src/features/lock/vault.ts`](src/features/lock/vault.ts)             |
 | When it locks                               | [`src/entrypoints/background.ts`](src/entrypoints/background.ts)       |
 | The passkey seal                            | [`src/features/lock/passkey.ts`](src/features/lock/passkey.ts)         |
+| How an Unshield is built                    | [`src/features/rings/unshield.ts`](src/features/rings/unshield.ts)     |
+| How Move to private is built                | [`src/features/rings/sweep.ts`](src/features/rings/sweep.ts)           |
 | What every build is checked for             | [`scripts/check-build.mjs`](scripts/check-build.mjs)                   |
 | End-to-end tests against a stand-in zsol.cc | [`tests/e2e`](tests/e2e)                                               |
 

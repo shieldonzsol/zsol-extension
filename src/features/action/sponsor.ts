@@ -184,11 +184,18 @@ const SPONSOR_ANSWER_MS = 60_000;
 
 const base64 = (bytes: Uint8Array) => getBase64Decoder().decode(bytes);
 
+/**
+ * How zSol takes it: a private action, its outputs to others opened with the keys handed over;
+ * or a move of the zSol address's public money into the private balance, which has none.
+ */
+export type SponsorKind = "private" | "sweep";
+
 export async function submitSponsored(input: {
   readonly site: string;
   readonly client: SprClient;
   readonly spender: Spender;
   readonly transaction: Transaction;
+  readonly kind?: SponsorKind;
   readonly onStep: (step: SendStep) => void;
   /** The private wallet signed it: its own signature, before anything is sent. */
   readonly onSigned?: (signature: string) => void;
@@ -204,17 +211,7 @@ export async function submitSponsored(input: {
   );
   const own = signed.signatures[input.spender.keypair.shieldedAddress().solanaAddress()];
   if (own) input.onSigned?.(getBase58Decoder().decode(own));
-  const keys = await sponsorKeys(input.client, input.spender, signed);
-  const body = JSON.stringify({
-    transaction: getBase64EncodedWireTransaction(signed),
-    txViewingKey: base64(keys.txViewingKey),
-    receivers: keys.receivers.map((receiver) => ({
-      slot: receiver.slot,
-      asset: receiver.asset,
-      nullifierPublicKey: base64(receiver.nullifierPublicKey),
-    })),
-  });
-  keys.txViewingKey.fill(0);
+  const body = await bodyOf(input.kind ?? "private", input.client, input.spender, signed);
   input.onStep("sending");
   const auth = await authHeaders();
   if (!auth) throw new SponsorRefused("signed-out");
@@ -248,6 +245,30 @@ export async function submitSponsored(input: {
     throw new SyncBehind(sent, { cause });
   });
   return sent;
+}
+
+async function bodyOf(
+  kind: SponsorKind,
+  client: SprClient,
+  spender: Spender,
+  signed: Transaction,
+): Promise<string> {
+  const transaction = getBase64EncodedWireTransaction(signed);
+  if (kind === "sweep") return JSON.stringify({ kind, transaction });
+  const keys = await sponsorKeys(client, spender, signed);
+  try {
+    return JSON.stringify({
+      transaction,
+      txViewingKey: base64(keys.txViewingKey),
+      receivers: keys.receivers.map((receiver) => ({
+        slot: receiver.slot,
+        asset: receiver.asset,
+        nullifierPublicKey: base64(receiver.nullifierPublicKey),
+      })),
+    });
+  } finally {
+    keys.txViewingKey.fill(0);
+  }
 }
 
 export type Landed = "landed" | "unsynced" | "failed" | "pending";

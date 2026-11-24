@@ -15,6 +15,7 @@ import { placeHref } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
 import { AccountCard } from "@/features/lock/account-card";
 import { PasskeyOffer } from "@/features/lock/passkey-offer";
+import { PublicMoneyCard } from "@/features/move/public-money-card";
 import { formatAbout, formatShown } from "@/features/rings/amounts";
 import { retrySignIn } from "@/features/session/session-store";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,7 @@ export function WalletPlace({
           <BalanceCard wallet={wallet} site={site} />
           {wallet.kind === "open" ? (
             <>
+              <PublicMoneyCard signInWallet={signInWallet} />
               <GhostCard ghosts={wallet.ghosts} site={site} retry={wallet.hitch === null} />
               <PasskeyOffer on={passkey} />
             </>
@@ -209,6 +211,15 @@ function BalanceCard({ wallet, site }: { readonly wallet: Opened; readonly site:
           >
             <ArrowDownToLineIcon data-icon="inline-start" strokeWidth={1.75} />
             Unshield
+          </a>
+          <a
+            href={`${site}/wallet#go-dark`}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ variant: "ghost", size: "sm", className: "col-span-2" })}
+          >
+            Add money: Go dark on zsol.cc
+            <ExternalLinkIcon data-icon="inline-end" strokeWidth={1.75} />
           </a>
         </nav>
       ) : null}
@@ -344,7 +355,8 @@ function AddressLine({
       </div>
       {registered === false ? (
         <p className="text-label text-pretty text-warn">
-          Others can pay this address once it's listed: your first Go dark on zsol.cc lists it.
+          Others can pay this address once it's listed: your first Go dark on zsol.cc lists it, and
+          so does moving money in from here.
         </p>
       ) : registered ? (
         <p className="text-label text-pretty text-muted-foreground">

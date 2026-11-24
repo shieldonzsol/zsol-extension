@@ -10,22 +10,29 @@ export const PLACES = [
 export type TabId = (typeof PLACES)[number]["id"];
 
 /** Places reached from a tab's own screen, under that tab. */
-const UNDER = { unshield: "wallet", "pay-many": "send" } as const satisfies Record<string, TabId>;
+const UNDER = {
+  unshield: "wallet",
+  move: "wallet",
+  "pay-many": "send",
+} as const satisfies Record<string, TabId>;
 
-export type PlaceId = TabId | keyof typeof UNDER;
+type UnderId = keyof typeof UNDER;
+
+const isUnder = (id: string): id is UnderId => Object.hasOwn(UNDER, id);
+
+export type PlaceId = TabId | UnderId;
 
 export const placeHref = (id: PlaceId) => `#/${id}`;
 
 export function placeFromHash(hash: string): PlaceId {
   const id = hash.replace(/^#\/?/, "");
-  const under = Object.keys(UNDER).find((each) => each === id);
-  if (under === "unshield" || under === "pay-many") return under;
+  if (isUnder(id)) return id;
   return PLACES.find((place) => place.id === id)?.id ?? "wallet";
 }
 
 /** The tab a place sits under. */
 export function tabOf(place: PlaceId): TabId {
-  return place === "unshield" || place === "pay-many" ? UNDER[place] : place;
+  return isUnder(place) ? UNDER[place] : place;
 }
 
 function subscribe(onChange: () => void) {
