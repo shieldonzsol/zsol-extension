@@ -22,9 +22,9 @@ import { feeOn, useFeeTerms, warmTerms } from "@/features/action/terms";
 import { feeWords } from "@/features/action/words";
 import { percentOf } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
-import { WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
+import { type Asset } from "@/features/rings/holdings";
 import { SendWays } from "@/features/send/send-ways";
-import { useWallet } from "@/features/wallet/wallet-store";
+import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
 import {
   MAX_PAYEES,
@@ -174,7 +174,7 @@ function PayManyForm({
   const ids = { list: useId(), note: useId() };
   const file = useRef<HTMLInputElement>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
-  const asset = WALLET_ASSETS.find((each) => each.mint === draft.mint) ?? WALLET_ASSETS[0]!;
+  const asset = assetFor(draft.mint);
   const parsed = parsePayList(draft.list, asset.decimals, own ?? "");
   const total = parsed.ok ? parsed.rows.reduce((sum, row) => sum + row.amount, 0n) : null;
   const fee = total === null ? null : feeOn(asset.mint, total, terms);

@@ -29,6 +29,8 @@ export interface SponsorSetup {
   readonly sendFeeBps: bigint;
   /** The least a send's fee is, by token, in its smallest unit. */
   readonly sendFeeMinimums: ReadonlyMap<string, bigint>;
+  /** The least zSol's fee is on a trade from the private balance, in lamports. */
+  readonly tradeFeeMinimum: bigint;
   /** Null when private actions can run now; otherwise why they can't. */
   readonly paused: "fee-wallet" | "treasury" | "off" | null;
 }
@@ -42,6 +44,10 @@ export const MAX_SEND_FEE_MINIMUMS: Readonly<Record<string, bigint>> = {
   "11111111111111111111111111111111": 1_000_000n,
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 100_000n,
 };
+
+/** A trade's least fee when zSol states none, and the most this panel accepts: 0.001 SOL. */
+export const DEFAULT_TRADE_FEE_MINIMUM = 30_000n;
+export const MAX_TRADE_FEE_MINIMUM = 1_000_000n;
 
 /** zSol answered, but not with its fee wallet's setup. */
 export class SetupUnread extends Error {
@@ -67,6 +73,7 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
       feeAssets: new Set(),
       sendFeeBps: DEFAULT_SEND_FEE_BPS,
       sendFeeMinimums: new Map(),
+      tradeFeeMinimum: DEFAULT_TRADE_FEE_MINIMUM,
       paused: "off",
     };
   }
@@ -90,6 +97,15 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
     }
     minimums.set(mint, BigInt(value));
   }
+  const tradeLeast = field(body, "tradeFeeMinimum");
+  if (
+    tradeLeast !== undefined &&
+    (typeof tradeLeast !== "string" ||
+      !/^\d{1,20}$/.test(tradeLeast) ||
+      BigInt(tradeLeast) > MAX_TRADE_FEE_MINIMUM)
+  ) {
+    throw new SetupUnread("tradeFeeMinimum");
+  }
   return {
     feePayer: addressIn(body, "feePayer"),
     treasury: addressIn(body, "treasury"),
@@ -98,6 +114,8 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
     ),
     sendFeeBps: typeof bps === "number" ? BigInt(bps) : DEFAULT_SEND_FEE_BPS,
     sendFeeMinimums: minimums,
+    tradeFeeMinimum:
+      typeof tradeLeast === "string" ? BigInt(tradeLeast) : DEFAULT_TRADE_FEE_MINIMUM,
     paused:
       paused === "fee-wallet" || paused === "treasury"
         ? paused
@@ -186,9 +204,9 @@ const base64 = (bytes: Uint8Array) => getBase64Decoder().decode(bytes);
 
 /**
  * How zSol takes it: a private action, its outputs to others opened with the keys handed over;
- * or a move of the zSol address's public money into the private balance, which has none.
+ * or a move into the private balance or a trade, which pay nobody privately.
  */
-export type SponsorKind = "private" | "sweep";
+export type SponsorKind = "private" | "sweep" | "trade";
 
 export async function submitSponsored(input: {
   readonly site: string;
@@ -254,7 +272,7 @@ async function bodyOf(
   signed: Transaction,
 ): Promise<string> {
   const transaction = getBase64EncodedWireTransaction(signed);
-  if (kind === "sweep") return JSON.stringify({ kind, transaction });
+  if (kind !== "private") return JSON.stringify({ kind, transaction });
   const keys = await sponsorKeys(client, spender, signed);
   try {
     return JSON.stringify({

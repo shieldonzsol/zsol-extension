@@ -123,11 +123,23 @@ export function TokenPicker({
   readonly onPick: (asset: Asset) => void;
 }) {
   const held = useHeld();
+  const wallet = useWallet();
+  // SOL and USDC always; every other token while it is held, or picked.
+  const others =
+    wallet.kind === "open"
+      ? (wallet.balances ?? [])
+          .filter(
+            (balance) =>
+              !WALLET_ASSETS.some((asset) => asset.mint === balance.asset.mint) &&
+              (balance.amount > 0n || balance.asset.mint === picked.mint),
+          )
+          .map((balance) => balance.asset)
+      : [];
   return (
     <fieldset className="flex flex-col gap-1.5">
       <legend className="mb-1.5 text-label font-medium text-muted-foreground">Token</legend>
       <div className="grid grid-cols-2 gap-2">
-        {WALLET_ASSETS.map((asset) => (
+        {[...WALLET_ASSETS, ...others].map((asset) => (
           <label
             key={asset.mint}
             className={cn(

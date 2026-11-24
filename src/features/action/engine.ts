@@ -78,7 +78,7 @@ export interface ActionContext {
 }
 
 export interface ActionSpec<D, P, F extends Prepared> {
-  readonly kind: OrderKind;
+  readonly kind: OrderKind | ((review: Built<F>) => OrderKind);
   readonly empty: () => D;
   /** What a fresh action keeps from the last one (the token, for one). */
   readonly another: (draft: D) => D;
@@ -97,9 +97,17 @@ export interface ActionSpec<D, P, F extends Prepared> {
   /** How zSol takes it; a private action unless said. */
   readonly sponsorKind?: SponsorKind;
   /** Whether a pause of zSol's stops this action; every pause does unless said. */
-  readonly stoppedBy?: (why: NonNullable<SponsorSetup["paused"]>) => boolean;
+  readonly stoppedBy?: (why: NonNullable<SponsorSetup["paused"]>, draft: D) => boolean;
   /** Runs once it landed and was read back. */
   readonly afterDone?: (review: Built<F>) => void;
+  /** Sends it some other way than through zSol's fee wallet; resolves with its signature. */
+  readonly submit?: (review: Built<F>, hooks: SubmitHooks) => Promise<string>;
+}
+
+export interface SubmitHooks {
+  readonly onStep: (step: SendStep) => void;
+  readonly onSigned: (signature: string) => void;
+  readonly onSent: (signature: string) => void;
 }
 
 /** A built action is reused within this, while its blockhash is still good. */
@@ -189,7 +197,7 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
     const asked = draft;
     try {
       const fees = await termsFor(context.open.site);
-      if (fees.paused && (spec.stoppedBy?.(fees.paused) ?? true)) {
+      if (fees.paused && (spec.stoppedBy?.(fees.paused, asked) ?? true)) {
         setState(formState({ kind: "paused", why: fees.paused }));
         return;
       }
@@ -222,25 +230,29 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
     if (!open) return;
     const { review: sent } = state;
     lastReview = null;
-    const handle = startOrder(spec.kind, spec.facts(sent), ["sign", "send", "land", "read"]);
+    const kind = typeof spec.kind === "function" ? spec.kind(sent) : spec.kind;
+    const handle = startOrder(kind, spec.facts(sent), ["sign", "send", "land", "read"]);
     order = handle;
     setState({ kind: "sending", review: sent, step: "signing", order: handle.id });
     handle.at("sign");
+    const onStep = (step: SendStep) => {
+      handle.at(ORDER_STEP[step]);
+      setState({ kind: "sending", review: sent, step, order: handle.id });
+    };
     try {
-      const signature = await submitSponsored({
-        site: open.site,
-        client: open.client,
-        spender: open.spender,
-        transaction: sent.transaction,
-        ...(spec.sponsorKind ? { kind: spec.sponsorKind } : {}),
-        onStep: (step) => {
-          handle.at(ORDER_STEP[step]);
-          setState({ kind: "sending", review: sent, step, order: handle.id });
-        },
-        onSigned: handle.signed,
-        onSent: handle.sent,
-        readBack,
-      });
+      const signature = spec.submit
+        ? await spec.submit(sent, { onStep, onSigned: handle.signed, onSent: handle.sent })
+        : await submitSponsored({
+            site: open.site,
+            client: open.client,
+            spender: open.spender,
+            transaction: sent.transaction,
+            ...(spec.sponsorKind ? { kind: spec.sponsorKind } : {}),
+            onStep,
+            onSigned: handle.signed,
+            onSent: handle.sent,
+            readBack,
+          });
       handle.done();
       setState({ kind: "done", review: sent, signature, order: handle.id });
       spec.afterDone?.(sent);

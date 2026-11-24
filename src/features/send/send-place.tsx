@@ -25,8 +25,8 @@ import {
 import { AMOUNT_WORDS, feeWords } from "@/features/action/words";
 import { mostWithFee, percentOf, plainAmount, readAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
-import { WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
-import { useWallet } from "@/features/wallet/wallet-store";
+import { type Asset } from "@/features/rings/holdings";
+import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
 import { SendWays } from "./send-ways";
 import {
@@ -151,7 +151,7 @@ function SendForm({
   const terms = useFeeTerms();
   const held = useHeld();
   const ids = { to: useId(), amount: useId(), toNote: useId(), amountNote: useId() };
-  const asset = WALLET_ASSETS.find((each) => each.mint === draft.mint) ?? WALLET_ASSETS[0]!;
+  const asset = assetFor(draft.mint);
   const rate = percentOf(terms.sendFeeBps);
   const charged = terms.feeAssets.has(asset.mint);
   const least = charged ? (terms.sendFeeMinimums.get(asset.mint) ?? 0n) : 0n;

@@ -26,9 +26,9 @@ import { warmTerms } from "@/features/action/terms";
 import { AMOUNT_WORDS } from "@/features/action/words";
 import { plainAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
-import { SOL, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
+import { SOL, type Asset } from "@/features/rings/holdings";
 import { UNSHIELD_COST_LAMPORTS } from "@/features/rings/unshield";
-import { useWallet } from "@/features/wallet/wallet-store";
+import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
 import {
   another,
@@ -157,7 +157,7 @@ function UnshieldForm({
   const draft = useDraft();
   const held = useHeld();
   const ids = { to: useId(), amount: useId(), toNote: useId(), amountNote: useId() };
-  const asset = WALLET_ASSETS.find((each) => each.mint === draft.mint) ?? WALLET_ASSETS[0]!;
+  const asset = assetFor(draft.mint);
   const { problem } = state;
   const toProblem =
     problem && ["to-empty", "bad-address", "own"].includes(problem.kind) ? problem : null;

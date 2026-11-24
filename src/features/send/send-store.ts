@@ -10,7 +10,7 @@ import { feeOn, leastFeeOn } from "@/features/action/terms";
 import { readAmount, type AmountProblem } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
-import { inWalletLane } from "@/features/wallet/wallet-store";
+import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 export interface SendDraft {
   readonly to: string;
@@ -46,8 +46,7 @@ export type SendState = ActionState<SendProblem, SendFacts>;
 
 const SOL_MINT = WALLET_ASSETS[0]?.mint ?? "11111111111111111111111111111111";
 
-const assetOf = (mint: string): Asset =>
-  WALLET_ASSETS.find((asset) => asset.mint === mint) ?? WALLET_ASSETS[0]!;
+const assetOf = assetFor;
 
 const short = (to: string) => `${to.slice(0, 4)}…${to.slice(-4)}`;
 

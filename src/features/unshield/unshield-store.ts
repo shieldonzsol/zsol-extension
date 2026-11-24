@@ -7,7 +7,7 @@ import { address, isAddress, type Address, type Transaction } from "@solana/kit"
 import { createAction, type ActionState, type Built, type Paused } from "@/features/action/engine";
 import { readAmount, type AmountProblem } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
-import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
+import { heldIn, type Asset } from "@/features/rings/holdings";
 import {
   buildUnshield,
   newAccountFloor,
@@ -17,7 +17,7 @@ import {
   UnshieldRentShort,
   UnshieldShort,
 } from "@/features/rings/unshield";
-import { inWalletLane } from "@/features/wallet/wallet-store";
+import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 export interface UnshieldDraft {
   readonly to: string;
@@ -61,8 +61,7 @@ export interface UnshieldFacts {
 export type Review = Built<UnshieldFacts>;
 export type UnshieldState = ActionState<UnshieldProblem, UnshieldFacts>;
 
-const assetOf = (mint: string): Asset =>
-  WALLET_ASSETS.find((asset) => asset.mint === mint) ?? WALLET_ASSETS[0]!;
+const assetOf = assetFor;
 
 const short = (to: string) => `${to.slice(0, 4)}…${to.slice(-4)}`;
 

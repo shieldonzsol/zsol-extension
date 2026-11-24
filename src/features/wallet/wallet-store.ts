@@ -23,7 +23,13 @@ import {
   type SprClient,
 } from "@/features/rings/client";
 import { ghostCount, heldIn, solOf, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
-import { ghostWallet, MAX_GHOST_WALLETS, privateKeypair } from "@/features/rings/keys";
+import { tokenInfo } from "@/features/rings/token-info";
+import {
+  ghostWallet,
+  MAX_GHOST_WALLETS,
+  privateKeypair,
+  type GhostWallet,
+} from "@/features/rings/keys";
 import { SiteError, type SiteFailure } from "@/features/rings/site-api";
 import { snapshotStore, type SnapshotStore } from "@/features/rings/snapshot-store";
 
@@ -113,6 +119,36 @@ function patch(at: number, change: Partial<Extract<WalletView, { kind: "opening"
 
 const balancesOf = (wallet: Wallet): Balance[] =>
   WALLET_ASSETS.map((asset) => ({ asset, amount: heldIn(wallet, asset.mint) }));
+
+/** SOL and USDC, then every other token it holds, each named once its card is read. */
+async function heldBalances(current: Opened): Promise<Balance[]> {
+  const base = balancesOf(current.wallet);
+  const { client } = current;
+  const others = [
+    ...new Set(current.wallet.registry.entries().map(([, mint]) => String(mint))),
+  ].filter((mint) => !WALLET_ASSETS.some((asset) => asset.mint === mint));
+  if (!client || others.length === 0) return base;
+  const named = await Promise.all(
+    others.map(async (mint): Promise<Balance | null> => {
+      const amount = heldIn(current.wallet, mint);
+      if (amount === 0n) return null;
+      const asset = await tokenInfo(current.site, client, mint).catch(() => null);
+      return asset ? { asset, amount } : null;
+    }),
+  );
+  return [...base, ...named.filter((each) => each !== null)];
+}
+
+/** A token the open wallet knows by its mint: SOL and USDC, or one it holds. */
+export function assetFor(mint: string): Asset {
+  const listed = WALLET_ASSETS.find((asset) => asset.mint === mint);
+  if (listed) return listed;
+  const held =
+    view.kind === "open" || view.kind === "opening"
+      ? view.balances?.find((balance) => balance.asset.mint === mint)?.asset
+      : undefined;
+  return held ?? WALLET_ASSETS[0]!;
+}
 
 /** Why work begun at `since` failed: zSol's own word, or whether zSol answered at all. */
 function hitchOf(error: unknown, since = Date.now()): Hitch | SessionStop {
@@ -247,6 +283,11 @@ function sync(current: Opened, requireSlot?: bigint) {
   });
 }
 
+/** A ghost wallet's keys, made from the open wallet's seed when a swap needs them. */
+export function ghostKeys(index: number): Promise<GhostWallet> | null {
+  return opened ? ghostWallet(opened.seed, index) : null;
+}
+
 /** What a send spends with: the open wallet, its keys and its client. Null until it opens. */
 export function spending() {
   const current = opened;
@@ -263,9 +304,10 @@ export function readBack(slot: bigint): Promise<void> {
   const at = turn;
   const current = opened;
   if (!current) return Promise.reject(new Error("The wallet isn't open."));
-  return inWalletLane(async () => {
-    await sync(current, slot);
-    patch(at, { balances: balancesOf(current.wallet), readAt: Date.now(), hitch: null });
+  // Naming the tokens reads the network: outside the lane, so a send never waits on it.
+  return inWalletLane(() => sync(current, slot)).then(async () => {
+    const balances = await heldBalances(current);
+    patch(at, { balances, readAt: Date.now(), hitch: null });
   });
 }
 
@@ -282,7 +324,7 @@ async function read(at: number): Promise<void> {
       isWalletRegistered({ rpc: current.client, owner: address(owner(current)) }).catch(() => null),
     ]);
     patch(at, {
-      balances: balancesOf(current.wallet),
+      balances: await heldBalances(current),
       readAt: Date.now(),
       reading: false,
       hitch: null,

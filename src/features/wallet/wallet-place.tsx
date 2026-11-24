@@ -263,27 +263,53 @@ function Figures({
   readonly balances: readonly Balance[] | null;
   readonly hidden: boolean;
 }) {
-  const rows = balances ?? [];
+  const rows = (balances ?? []).slice(0, 2);
+  const others = (balances ?? []).slice(2).filter((balance) => balance.amount > 0n);
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-3" aria-busy={balances === null}>
-      {balances === null
-        ? ["SOL", "USDC"].map((symbol) => (
-            <li key={symbol} className="flex min-w-0 flex-col gap-1">
-              <span className="text-label text-muted-foreground" translate="no">
-                {symbol}
-              </span>
-              <span className="h-9 w-24 animate-pulse rounded-md bg-muted" />
-            </li>
-          ))
-        : rows.map((balance) => (
-            <li key={balance.asset.mint} className="flex min-w-0 flex-col gap-1">
-              <span className="text-label text-muted-foreground" translate="no">
+    <>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-3" aria-busy={balances === null}>
+        {balances === null
+          ? ["SOL", "USDC"].map((symbol) => (
+              <li key={symbol} className="flex min-w-0 flex-col gap-1">
+                <span className="text-label text-muted-foreground" translate="no">
+                  {symbol}
+                </span>
+                <span className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+              </li>
+            ))
+          : rows.map((balance) => (
+              <li key={balance.asset.mint} className="flex min-w-0 flex-col gap-1">
+                <span className="text-label text-muted-foreground" translate="no">
+                  {balance.asset.symbol}
+                </span>
+                <Amount balance={balance} hidden={hidden} />
+              </li>
+            ))}
+      </ul>
+      {others.length > 0 ? (
+        <ul
+          aria-label="Other tokens"
+          className="flex flex-col gap-1.5 border-t border-border/70 pt-3"
+        >
+          {others.map((balance) => (
+            <li key={balance.asset.mint} className="flex items-baseline justify-between gap-3">
+              <span
+                className="truncate text-sm text-muted-foreground"
+                title={balance.asset.mint}
+                translate="no"
+              >
                 {balance.asset.symbol}
               </span>
-              <Amount balance={balance} hidden={hidden} />
+              <span className="shrink-0 text-sm font-medium tabular-nums">
+                {hidden
+                  ? "Hidden"
+                  : formatShown(balance.amount, balance.asset.decimals, balance.asset.places)}
+              </span>
             </li>
           ))}
-    </ul>
+        </ul>
+      ) : null}
+    </>
   );
 }
 

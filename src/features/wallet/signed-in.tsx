@@ -6,6 +6,8 @@ import { MovePlace } from "@/features/move/move-place";
 import { forgetMove } from "@/features/move/move-store";
 import { forgetPublicMoney } from "@/features/move/public-money";
 import { OrdersPlace } from "@/features/orders/orders-place";
+import { TradePlace } from "@/features/trade/trade-place";
+import { forgetTrade } from "@/features/trade/trade-store";
 import { PayManyPlace } from "@/features/pay-many/pay-many-place";
 import { forgetPayMany } from "@/features/pay-many/pay-many-store";
 import { SendPlace } from "@/features/send/send-place";
@@ -39,6 +41,7 @@ export default function SignedIn({
       forgetUnshield();
       forgetPayMany();
       forgetMove();
+      forgetTrade();
       forgetPublicMoney();
     };
   }, [seed, site]);
@@ -50,6 +53,8 @@ export default function SignedIn({
       <main className="min-h-0 flex-1 overflow-y-auto">
         {place === "pay-many" ? (
           <PayManyPlace site={site} signInWallet={signInWallet} />
+        ) : place === "trade" ? (
+          <TradePlace site={site} signInWallet={signInWallet} />
         ) : place === "move" ? (
           <MovePlace site={site} signInWallet={signInWallet} />
         ) : place === "unshield" ? (

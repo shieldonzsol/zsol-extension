@@ -5,7 +5,12 @@ import { useSyncExternalStore } from "react";
 import { feeAt } from "@/features/rings/amount-input";
 import { WALLET_ASSETS } from "@/features/rings/holdings";
 
-import { DEFAULT_SEND_FEE_BPS, sponsorSetup, type SponsorSetup } from "./sponsor";
+import {
+  DEFAULT_SEND_FEE_BPS,
+  DEFAULT_TRADE_FEE_MINIMUM,
+  sponsorSetup,
+  type SponsorSetup,
+} from "./sponsor";
 
 const FRESH_MS = 10_000;
 
@@ -36,26 +41,32 @@ export async function warmTerms(site: string): Promise<void> {
 }
 
 /** zSol's fee terms: which tokens pay it, at what rate, and its least fee. */
-export type FeeTerms = Pick<SponsorSetup, "feeAssets" | "sendFeeBps" | "sendFeeMinimums">;
+export type FeeTerms = Pick<
+  SponsorSetup,
+  "feeAssets" | "sendFeeBps" | "sendFeeMinimums" | "tradeFeeMinimum"
+>;
 
 // What a form shows until zSol's own terms are read.
 const ASSUMED: FeeTerms = {
   feeAssets: new Set(WALLET_ASSETS.map((each) => each.mint)),
   sendFeeBps: DEFAULT_SEND_FEE_BPS,
   sendFeeMinimums: new Map(),
+  tradeFeeMinimum: DEFAULT_TRADE_FEE_MINIMUM,
 };
 
 export const currentTerms = (): FeeTerms => setup?.value ?? ASSUMED;
 
 /** zSol's fee on sending `amount` of `mint`: its rate or its least fee, nothing on other tokens. */
-export function feeOn(mint: string, amount: bigint, terms: FeeTerms = currentTerms()): bigint {
+type SendTerms = Pick<FeeTerms, "feeAssets" | "sendFeeBps" | "sendFeeMinimums">;
+
+export function feeOn(mint: string, amount: bigint, terms: SendTerms = currentTerms()): bigint {
   return terms.feeAssets.has(mint)
     ? feeAt(amount, terms.sendFeeBps, terms.sendFeeMinimums.get(mint) ?? 0n)
     : 0n;
 }
 
 /** zSol's least fee on `mint`, zero when it states none or charges nothing on it. */
-export function leastFeeOn(mint: string, terms: FeeTerms = currentTerms()): bigint {
+export function leastFeeOn(mint: string, terms: SendTerms = currentTerms()): bigint {
   return terms.feeAssets.has(mint) ? (terms.sendFeeMinimums.get(mint) ?? 0n) : 0n;
 }
 

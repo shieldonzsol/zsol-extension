@@ -9,8 +9,8 @@ import { createAction, type ActionState, type Built, type Paused } from "@/featu
 import { shortfallOf, type Shortfall } from "@/features/action/outcomes";
 import { feeOn, leastFeeOn } from "@/features/action/terms";
 import { formatAmount } from "@/features/rings/amounts";
-import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
-import { inWalletLane } from "@/features/wallet/wallet-store";
+import { heldIn, type Asset } from "@/features/rings/holdings";
+import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 import { MAX_PAYEES, parsePayList, splitPayments, type LineProblem, type PayRow } from "./pay-list";
 
@@ -48,8 +48,7 @@ export interface PayManyFacts {
 export type Review = Built<PayManyFacts>;
 export type PayManyState = ActionState<PayManyProblem, PayManyFacts>;
 
-const assetOf = (mint: string): Asset =>
-  WALLET_ASSETS.find((asset) => asset.mint === mint) ?? WALLET_ASSETS[0]!;
+const assetOf = assetFor;
 
 function rowsOf(draft: PayManyDraft, own: string): readonly PayRow[] | PayManyProblem {
   const list = parsePayList(draft.list, assetOf(draft.mint).decimals, own);
