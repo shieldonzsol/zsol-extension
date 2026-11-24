@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 
-import { usePlace } from "@/app/places";
+import { tabOf, usePlace } from "@/app/places";
 import { PlaceTabs } from "@/components/place-tabs";
 import { OrdersPlace } from "@/features/orders/orders-place";
 import { SendPlace } from "@/features/send/send-place";
+import { UnshieldPlace } from "@/features/unshield/unshield-place";
 import { forgetSend } from "@/features/send/send-store";
+import { forgetUnshield } from "@/features/unshield/unshield-store";
 
 import { useReadWhenBack, WalletPlace } from "./wallet-place";
 import { closeWallet, openWallet, useWallet } from "./wallet-store";
@@ -29,6 +31,7 @@ export default function SignedIn({
     return () => {
       closeWallet();
       forgetSend();
+      forgetUnshield();
     };
   }, [seed, site]);
 
@@ -37,7 +40,9 @@ export default function SignedIn({
   return (
     <>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        {place === "orders" ? (
+        {place === "unshield" ? (
+          <UnshieldPlace site={site} signInWallet={signInWallet} />
+        ) : place === "orders" ? (
           <OrdersPlace site={site} />
         ) : place === "send" ? (
           <SendPlace site={site} signInWallet={signInWallet} />
@@ -45,7 +50,7 @@ export default function SignedIn({
           <WalletPlace seed={seed} site={site} signInWallet={signInWallet} passkey={passkey} />
         )}
       </main>
-      <PlaceTabs current={place} />
+      <PlaceTabs current={tabOf(place)} />
     </>
   );
 }

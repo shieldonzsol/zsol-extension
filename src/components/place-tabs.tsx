@@ -1,7 +1,7 @@
-import { PLACES, placeHref, type PlaceId } from "@/app/places";
+import { PLACES, placeHref, type TabId } from "@/app/places";
 import { cn } from "@/lib/utils";
 
-export function PlaceTabs({ current }: { readonly current: PlaceId }) {
+export function PlaceTabs({ current }: { readonly current: TabId }) {
   const open = PLACES.findIndex((place) => place.id === current);
   return (
     <nav

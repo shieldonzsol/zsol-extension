@@ -1,4 +1,6 @@
 import {
+  ArrowDownToLineIcon,
+  ArrowUpRightIcon,
   CheckIcon,
   CopyIcon,
   EyeIcon,
@@ -9,6 +11,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { browser } from "wxt/browser";
 
+import { placeHref } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
 import { AccountCard } from "@/features/lock/account-card";
 import { PasskeyOffer } from "@/features/lock/passkey-offer";
@@ -191,6 +194,24 @@ function BalanceCard({ wallet, site }: { readonly wallet: Opened; readonly site:
         {readLine(wallet, now)}
       </output>
       {hitch !== null && balances !== null ? <TryAgain hitch={hitch} disabled={reading} /> : null}
+      {wallet.kind === "open" && !empty ? (
+        <nav aria-label="Move money" className="grid grid-cols-2 gap-2">
+          <a
+            href={placeHref("send")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ArrowUpRightIcon data-icon="inline-start" strokeWidth={1.75} />
+            Send dark
+          </a>
+          <a
+            href={placeHref("unshield")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ArrowDownToLineIcon data-icon="inline-start" strokeWidth={1.75} />
+            Unshield
+          </a>
+        </nav>
+      ) : null}
       {empty && wallet.kind === "open" && hitch === null ? (
         <div className="flex flex-col gap-2 border-t border-border/70 pt-3">
           <p className="text-sm font-medium">Nothing here yet.</p>

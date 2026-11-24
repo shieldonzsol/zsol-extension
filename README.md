@@ -43,7 +43,8 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 - [ ] **Trade:** swap from a ghost wallet or your private balance, in one click
 - [x] **Send dark** from your private balance
 - [x] **Orders:** every action with its id, sealed on your device, until it lands
-- [ ] **Pay many** and **Unshield**
+- [x] **Unshield** to any address, a new token account paid from your private SOL
+- [ ] **Pay many**
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites
       where you turn it on
