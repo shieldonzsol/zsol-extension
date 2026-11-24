@@ -7,6 +7,7 @@ export const KIND_WORDS: Record<OrderKind, string> = {
   move: "Move to private",
   trade: "Trade",
   "ghost-swap": "Ghost swap",
+  "ghost-pay": "Ghost pay",
 };
 
 export const STEP_WORDS: Readonly<

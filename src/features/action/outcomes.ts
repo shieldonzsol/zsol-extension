@@ -26,6 +26,8 @@ export type FailureKind =
   | "budget"
   | "offline"
   | "unreachable"
+  /** It left the private balance for the zSol address and went no further: it waits there. */
+  | "left"
   | Exclude<BuildStop, "build">
   | "failed";
 
@@ -37,6 +39,18 @@ export interface FailureFacts {
   /** Seconds to wait before trying again. */
   readonly retryAfter?: number;
   readonly budget?: SponsorBudget;
+}
+
+/** Money left the private balance for the zSol address and stopped there, in public. */
+export class LeftAtAddress extends Error {
+  override readonly name = "LeftAtAddress";
+  constructor(
+    /** The deposit's signature, when it went out and wasn't seen landing. */
+    readonly signature?: string,
+    options?: ErrorOptions,
+  ) {
+    super("It waits at the zSol address.", options);
+  }
 }
 
 /** How long the SDK holds what a built transaction would spend. */
@@ -66,6 +80,13 @@ export function failureOf(error: unknown, online: boolean): FailureFacts {
     return { kind: "landed-unsynced", maybeMoved: true, signature: error.signature };
   }
   if (error instanceof SendUnanswered) return { kind: "unanswered", maybeMoved: true };
+  if (error instanceof LeftAtAddress) {
+    return {
+      kind: "left",
+      maybeMoved: true,
+      ...(error.signature ? { signature: error.signature } : {}),
+    };
+  }
   if (!online) return { kind: "offline", maybeMoved: false };
   if (error instanceof SponsorRefused) {
     const kind = error.budget ? "budget" : (BY_CODE[error.code] ?? "failed");

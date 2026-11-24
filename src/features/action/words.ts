@@ -64,6 +64,10 @@ export const FAILURE_WORDS: Record<FailureKind, { readonly title: string; readon
       body: "zSol pays the network fee for a set number of private actions per account, so no one account can run its fee wallet dry. Your private balance is as it was.",
     },
     offline: { title: "You're offline. Nothing moved.", body: "Reconnect, then try again." },
+    left: {
+      title: "It left your private balance and stopped at your zSol address.",
+      body: "It waits there, in public. Move it back to private from your wallet, then try again.",
+    },
     unreachable: {
       title: "zSol couldn't be reached. Nothing moved.",
       body: "Check your connection, then try again.",

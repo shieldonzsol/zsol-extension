@@ -102,6 +102,15 @@ export interface ActionSpec<D, P, F extends Prepared> {
   readonly afterDone?: (review: Built<F>) => void;
   /** Sends it some other way than through zSol's fee wallet; resolves with its signature. */
   readonly submit?: (review: Built<F>, hooks: SubmitHooks) => Promise<string>;
+  /** Actions sharing a lock send one at a time, across every panel window. */
+  readonly lock?: string;
+}
+
+/** Runs `work` holding `name` in every page of this extension, when the browser has locks. */
+function holding<T>(name: string | undefined, work: () => Promise<T>): Promise<T> {
+  return name && typeof navigator.locks?.request === "function"
+    ? navigator.locks.request(name, work)
+    : work();
 }
 
 export interface SubmitHooks {
@@ -240,19 +249,21 @@ export function createAction<D, P, F extends Prepared>(spec: ActionSpec<D, P, F>
       setState({ kind: "sending", review: sent, step, order: handle.id });
     };
     try {
-      const signature = spec.submit
-        ? await spec.submit(sent, { onStep, onSigned: handle.signed, onSent: handle.sent })
-        : await submitSponsored({
-            site: open.site,
-            client: open.client,
-            spender: open.spender,
-            transaction: sent.transaction,
-            ...(spec.sponsorKind ? { kind: spec.sponsorKind } : {}),
-            onStep,
-            onSigned: handle.signed,
-            onSent: handle.sent,
-            readBack,
-          });
+      const signature = await holding(spec.lock, () =>
+        spec.submit
+          ? spec.submit(sent, { onStep, onSigned: handle.signed, onSent: handle.sent })
+          : submitSponsored({
+              site: open.site,
+              client: open.client,
+              spender: open.spender,
+              transaction: sent.transaction,
+              ...(spec.sponsorKind ? { kind: spec.sponsorKind } : {}),
+              onStep,
+              onSigned: handle.signed,
+              onSent: handle.sent,
+              readBack,
+            }),
+      );
       handle.done();
       setState({ kind: "done", review: sent, signature, order: handle.id });
       spec.afterDone?.(sent);

@@ -2,6 +2,8 @@ import { useEffect } from "react";
 
 import { tabOf, usePlace } from "@/app/places";
 import { PlaceTabs } from "@/components/place-tabs";
+import { GhostPayPlace } from "@/features/ghost/ghost-pay-place";
+import { forgetGhostPay } from "@/features/ghost/ghost-pay-store";
 import { MovePlace } from "@/features/move/move-place";
 import { forgetMove } from "@/features/move/move-store";
 import { forgetPublicMoney } from "@/features/move/public-money";
@@ -42,6 +44,7 @@ export default function SignedIn({
       forgetPayMany();
       forgetMove();
       forgetTrade();
+      forgetGhostPay();
       forgetPublicMoney();
     };
   }, [seed, site]);
@@ -53,6 +56,8 @@ export default function SignedIn({
       <main className="min-h-0 flex-1 overflow-y-auto">
         {place === "pay-many" ? (
           <PayManyPlace site={site} signInWallet={signInWallet} />
+        ) : place === "ghost-pay" ? (
+          <GhostPayPlace site={site} signInWallet={signInWallet} />
         ) : place === "trade" ? (
           <TradePlace site={site} signInWallet={signInWallet} />
         ) : place === "move" ? (

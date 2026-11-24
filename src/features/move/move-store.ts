@@ -8,7 +8,7 @@ import {
   type Sweep,
 } from "@/features/rings/sweep";
 import { formatAmount } from "@/features/rings/amounts";
-import { readAgain } from "@/features/wallet/wallet-store";
+import { ADDRESS_LOCK, readAgain } from "@/features/wallet/wallet-store";
 
 import { summaryOf, tokenLine, type MoneyLine } from "./money-words";
 import { readPublicMoney } from "./public-money";
@@ -51,6 +51,7 @@ const move = createAction<MoveDraft, MoveProblem, Sweep>({
   // A move pays no fee into zSol's fee account, so only the fee wallet's own pause stops it.
   stoppedBy: (why) => why !== "treasury",
   sponsorKind: "sweep",
+  lock: ADDRESS_LOCK,
   async prepare(_, { open, fees }) {
     try {
       const built = await buildSweep(open.client, {

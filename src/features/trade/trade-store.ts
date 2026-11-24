@@ -36,6 +36,7 @@ import {
 import { tokenProgramOf } from "@/features/rings/unshield";
 import type { SprClient } from "@/features/rings/client";
 import {
+  ADDRESS_LOCK,
   ghostKeys,
   inWalletLane,
   readAgain,
@@ -464,6 +465,7 @@ const trade = createAction<TradeDraft, TradeProblem, TradeFacts>({
     hooks.onStep("syncing");
     return signature;
   },
+  lock: ADDRESS_LOCK,
   afterDone: () => void readAgain(),
   facts: (review) => ({
     amount: `${formatAmount(review.amount, review.from.decimals)} ${review.from.symbol}`,

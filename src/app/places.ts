@@ -21,6 +21,7 @@ const UNDER = {
   unshield: "wallet",
   move: "wallet",
   "pay-many": "send",
+  "ghost-pay": "send",
 } as const satisfies Record<string, TabId>;
 
 type UnderId = keyof typeof UNDER;

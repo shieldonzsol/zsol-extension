@@ -2,7 +2,8 @@
 // by and its steps in order, each with its state and its times. Plain data and plain functions:
 // nothing here touches storage, the network or React. Every function returns a new order.
 
-export type OrderKind = "send-dark" | "pay-many" | "unshield" | "move" | "trade" | "ghost-swap";
+export type OrderKind =
+  "send-dark" | "pay-many" | "unshield" | "move" | "trade" | "ghost-swap" | "ghost-pay";
 
 export type StepState = "waiting" | "active" | "done" | "failed";
 

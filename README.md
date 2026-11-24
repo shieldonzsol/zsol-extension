@@ -47,6 +47,7 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
       private SOL
 - [x] **Move to private:** what reached your zSol address in public, into your private balance
 - [x] **Pay many:** up to 14 zSol addresses in one private transaction, a list pasted or a CSV
+- [x] **Ghost pay:** any address paid through Ghost Route, at once or in timed parts
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites
       where you turn it on
@@ -114,21 +115,22 @@ That is all. Every permission the extension adds is explained in its pull reques
 
 Every line the extension runs is in this repository. Good places to start:
 
-| What                                          | Where                                                                    |
-| --------------------------------------------- | ------------------------------------------------------------------------ |
-| Permissions and who may message the panel     | [`src/manifest.ts`](src/manifest.ts)                                     |
-| The one-time code                             | [`src/features/pairing/code.ts`](src/features/pairing/code.ts)           |
-| The checks on every message from zsol.cc      | [`src/features/pairing/handler.ts`](src/features/pairing/handler.ts)     |
-| The sealed handover                           | [`src/features/pairing/protocol.ts`](src/features/pairing/protocol.ts)   |
-| Where the wallet is kept                      | [`src/features/lock/vault.ts`](src/features/lock/vault.ts)               |
-| When it locks                                 | [`src/entrypoints/background.ts`](src/entrypoints/background.ts)         |
-| The passkey seal                              | [`src/features/lock/passkey.ts`](src/features/lock/passkey.ts)           |
-| How an Unshield is built                      | [`src/features/rings/unshield.ts`](src/features/rings/unshield.ts)       |
-| How Move to private is built                  | [`src/features/rings/sweep.ts`](src/features/rings/sweep.ts)             |
-| What a ghost swap is checked for              | [`src/features/rings/ghost-swap.ts`](src/features/rings/ghost-swap.ts)   |
-| How a trade from the private balance is built | [`src/features/rings/trade-build.ts`](src/features/rings/trade-build.ts) |
-| What every build is checked for               | [`scripts/check-build.mjs`](scripts/check-build.mjs)                     |
-| End-to-end tests against a stand-in zsol.cc   | [`tests/e2e`](tests/e2e)                                                 |
+| What                                          | Where                                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| Permissions and who may message the panel     | [`src/manifest.ts`](src/manifest.ts)                                         |
+| The one-time code                             | [`src/features/pairing/code.ts`](src/features/pairing/code.ts)               |
+| The checks on every message from zsol.cc      | [`src/features/pairing/handler.ts`](src/features/pairing/handler.ts)         |
+| The sealed handover                           | [`src/features/pairing/protocol.ts`](src/features/pairing/protocol.ts)       |
+| Where the wallet is kept                      | [`src/features/lock/vault.ts`](src/features/lock/vault.ts)                   |
+| When it locks                                 | [`src/entrypoints/background.ts`](src/entrypoints/background.ts)             |
+| The passkey seal                              | [`src/features/lock/passkey.ts`](src/features/lock/passkey.ts)               |
+| How an Unshield is built                      | [`src/features/rings/unshield.ts`](src/features/rings/unshield.ts)           |
+| How Move to private is built                  | [`src/features/rings/sweep.ts`](src/features/rings/sweep.ts)                 |
+| What a ghost swap is checked for              | [`src/features/rings/ghost-swap.ts`](src/features/rings/ghost-swap.ts)       |
+| How a trade from the private balance is built | [`src/features/rings/trade-build.ts`](src/features/rings/trade-build.ts)     |
+| What a Ghost pay deposit is checked for       | [`src/features/ghost/deposit-check.ts`](src/features/ghost/deposit-check.ts) |
+| What every build is checked for               | [`scripts/check-build.mjs`](scripts/check-build.mjs)                         |
+| End-to-end tests against a stand-in zsol.cc   | [`tests/e2e`](tests/e2e)                                                     |
 
 ## Develop
 

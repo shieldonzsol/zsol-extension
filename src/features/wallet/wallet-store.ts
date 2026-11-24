@@ -283,6 +283,9 @@ function sync(current: Opened, requireSlot?: bigint) {
   });
 }
 
+/** What spends through the zSol address in public holds this: one at a time. */
+export const ADDRESS_LOCK = "zsol-address";
+
 /** A ghost wallet's keys, made from the open wallet's seed when a swap needs them. */
 export function ghostKeys(index: number): Promise<GhostWallet> | null {
   return opened ? ghostWallet(opened.seed, index) : null;

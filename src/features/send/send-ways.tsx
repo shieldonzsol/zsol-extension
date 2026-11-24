@@ -1,14 +1,15 @@
 import { placeHref } from "@/app/places";
 import { cn } from "@/lib/utils";
 
-/** The Send tab's two forms: one receiver, or a list. */
-export function SendWays({ current }: { readonly current: "send" | "pay-many" }) {
+/** The Send tab's forms: one zSol receiver, a list, or any address by Ghost Route. */
+export function SendWays({ current }: { readonly current: "send" | "pay-many" | "ghost-pay" }) {
   const ways = [
     { id: "send", label: "Send dark" },
     { id: "pay-many", label: "Pay many" },
+    { id: "ghost-pay", label: "Ghost pay" },
   ] as const;
   return (
-    <nav aria-label="Ways to send" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+    <nav aria-label="Ways to send" className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
       {ways.map((way) => (
         <a
           key={way.id}
