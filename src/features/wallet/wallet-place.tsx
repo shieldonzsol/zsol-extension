@@ -10,9 +10,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { browser } from "wxt/browser";
 
 import { buttonVariants } from "@/components/ui/button";
+import { AccountCard } from "@/features/lock/account-card";
+import { PasskeyOffer } from "@/features/lock/passkey-offer";
 import { formatAbout, formatShown } from "@/features/rings/amounts";
-import { useSendBusy } from "@/features/send/send-store";
-import { disconnect, retrySignIn } from "@/features/session/session-store";
+import { retrySignIn } from "@/features/session/session-store";
 import { cn } from "@/lib/utils";
 
 import { readAge } from "./age";
@@ -66,10 +67,13 @@ export function WalletPlace({
   seed,
   site,
   signInWallet,
+  passkey,
 }: {
   readonly seed: Uint8Array;
   readonly site: string;
   readonly signInWallet: string;
+  /** A passkey on this device opens the wallet after a lock. */
+  readonly passkey: boolean;
 }) {
   const wallet = useWallet();
   return (
@@ -80,11 +84,14 @@ export function WalletPlace({
         <>
           <BalanceCard wallet={wallet} site={site} />
           {wallet.kind === "open" ? (
-            <GhostCard ghosts={wallet.ghosts} site={site} retry={wallet.hitch === null} />
+            <>
+              <GhostCard ghosts={wallet.ghosts} site={site} retry={wallet.hitch === null} />
+              <PasskeyOffer on={passkey} />
+            </>
           ) : null}
         </>
       )}
-      <AccountLine signInWallet={signInWallet} />
+      <AccountCard signInWallet={signInWallet} passkey={passkey} />
     </div>
   );
 }
@@ -454,30 +461,6 @@ function RefusalCard({
         </button>
       ) : null}
     </section>
-  );
-}
-
-function AccountLine({ signInWallet }: { readonly signInWallet: string }) {
-  // Disconnecting forgets the wallet: a send being signed or sent finishes first.
-  const busy = useSendBusy();
-  return (
-    <div className="flex items-center gap-2 px-1 text-label text-muted-foreground">
-      <span className="min-w-0 flex-1 truncate">
-        Signed in with{" "}
-        <span className="font-mono text-foreground" title={signInWallet} translate="no">
-          {short(signInWallet)}
-        </span>
-      </span>
-      <button
-        type="button"
-        disabled={busy}
-        title={busy ? "Disconnect opens once the send in progress is done." : undefined}
-        onClick={() => void disconnect()}
-        className={buttonVariants({ variant: "ghost", size: "sm" })}
-      >
-        Disconnect
-      </button>
-    </div>
   );
 }
 

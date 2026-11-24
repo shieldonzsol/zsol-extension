@@ -22,12 +22,15 @@ test("the panel offers a one-time code to connect an account", async ({ context,
   expect(errors).toEqual([]);
 });
 
-test("the extension asks Chrome for the side panel only", async ({ context, extensionId }) => {
+test("the extension asks Chrome for the side panel, its storage, a timer and the lock state", async ({
+  context,
+  extensionId,
+}) => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   const manifest: unknown = await page.evaluate("chrome.runtime.getManifest()");
   expect(manifest).toMatchObject({
-    permissions: ["sidePanel"],
+    permissions: ["sidePanel", "storage", "alarms", "idle"],
     side_panel: { default_path: "sidepanel.html" },
   });
 });

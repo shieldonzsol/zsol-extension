@@ -28,7 +28,8 @@ export function manifestFor(mode: string) {
     // Ed25519 in Web Crypto.
     minimum_chrome_version: "137",
     incognito: "not_allowed",
-    permissions: ["sidePanel"],
+    // The open wallet in memory, the lock's timer, and locking when the computer locks.
+    permissions: ["sidePanel", "storage", "alarms", "idle"],
     action: { default_title: "Open zSol" },
     externally_connectable: { matches: originsFor(mode).map(matchFor) },
     // The private wallet's hasher is WebAssembly shipped in the package.

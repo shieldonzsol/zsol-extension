@@ -13,10 +13,12 @@ export default function SignedIn({
   seed,
   site,
   signInWallet,
+  passkey,
 }: {
   readonly seed: Uint8Array;
   readonly site: string;
   readonly signInWallet: string;
+  readonly passkey: boolean;
 }) {
   const place = usePlace();
   const wallet = useWallet();
@@ -37,7 +39,7 @@ export default function SignedIn({
         {place === "send" ? (
           <SendPlace site={site} signInWallet={signInWallet} />
         ) : (
-          <WalletPlace seed={seed} site={site} signInWallet={signInWallet} />
+          <WalletPlace seed={seed} site={site} signInWallet={signInWallet} passkey={passkey} />
         )}
       </main>
       <PlaceTabs current={place} />

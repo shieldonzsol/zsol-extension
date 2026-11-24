@@ -13,7 +13,11 @@ export function usePairing() {
       extensionId: browser.runtime.id,
       origins: ZSOL_ORIGINS,
       tickets,
-      onPaired: connect,
+      onPaired: (payload, site) => {
+        void connect(payload, site).catch((error: unknown) => {
+          console.error("zSol could not keep the connected account", error);
+        });
+      },
     });
     const listener = (
       message: unknown,

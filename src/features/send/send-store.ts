@@ -6,6 +6,7 @@ import { isWalletRegistered } from "@heliuslabs/spr/wallet";
 import { address, isAddress, type Address, type Transaction } from "@solana/kit";
 import { useSyncExternalStore } from "react";
 
+import { setBusy } from "@/features/lock/busy";
 import { feeAt, readAmount, type AmountProblem } from "@/features/rings/amount-input";
 import { lastBusy, lastUnauthorized } from "@/features/rings/client";
 import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
@@ -94,6 +95,7 @@ function publish() {
 
 function setState(next: SendState) {
   state = next;
+  setBusy(next.kind === "sending");
   publish();
 }
 
@@ -384,13 +386,4 @@ export function useFeeTerms(): FeeTerms {
 
 export function useDraft(): SendDraft {
   return useSyncExternalStore(subscribe, currentDraft, currentDraft);
-}
-
-/** A send is being signed or sent: locking or disconnecting waits for it. */
-export function useSendBusy(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => state.kind === "sending",
-    () => state.kind === "sending",
-  );
 }

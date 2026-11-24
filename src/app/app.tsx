@@ -1,6 +1,9 @@
 import { lazy, Suspense, type ReactNode } from "react";
 
 import { PanelHeader } from "@/components/panel-header";
+import { LockButton } from "@/features/lock/lock-button";
+import { LockedScreen } from "@/features/lock/locked-screen";
+import { ActivityWatch } from "@/features/lock/use-activity";
 import { ConnectScreen } from "@/features/pairing/connect-screen";
 import { usePairing } from "@/features/pairing/use-pairing";
 import { ConnectedScreen } from "@/features/session/connected-screen";
@@ -15,8 +18,15 @@ export function App() {
   const session = useSession();
   return (
     <div className="flex h-dvh flex-col">
-      <PanelHeader />
-      {session.kind === "connected" ? (
+      <PanelHeader end={session.kind === "connected" ? <LockButton /> : null} />
+      {session.kind === "connected" ? <ActivityWatch /> : null}
+      {session.kind === "starting" ? (
+        <Scroll>{null}</Scroll>
+      ) : session.kind === "locked" ? (
+        <Scroll>
+          <LockedScreen wallet={session.wallet} passkey={session.passkey} reason={session.reason} />
+        </Scroll>
+      ) : session.kind === "connected" ? (
         <Suspense
           fallback={
             <Scroll>
@@ -27,7 +37,12 @@ export function App() {
           <PrivySession seed={session.seed} attempt={session.attempt}>
             {session.signIn === "signed-in" ? (
               <Suspense fallback={<OpeningWallet />}>
-                <SignedIn seed={session.seed} site={session.site} signInWallet={session.wallet} />
+                <SignedIn
+                  seed={session.seed}
+                  site={session.site}
+                  signInWallet={session.wallet}
+                  passkey={session.passkey}
+                />
               </Suspense>
             ) : (
               <Scroll>

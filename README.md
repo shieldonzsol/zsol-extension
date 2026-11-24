@@ -18,8 +18,8 @@ Helius Privacy Rings.
 [Permissions](#permissions) · [Audit it yourself](#audit-it-yourself)
 
 > [!IMPORTANT]
-> zSol for Chrome is in early development. It is not in the Chrome Web Store yet, and it connects
-> to your zSol account but cannot trade or send yet. Until it can, use zSol at
+> zSol for Chrome is in early development and not in the Chrome Web Store yet. It shows your
+> private balance and ghost wallets and sends dark; for everything else, use zSol at
 > [zsol.cc](https://zsol.cc).
 
 ## What it does
@@ -38,9 +38,11 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 
 - [x] zSol in Chrome's side panel, opened from the toolbar
 - [x] Connect to your zSol account with a one-time code
-- [ ] **Wallet:** your private balance and your ghost wallets
+- [x] **Wallet:** your private balance and your ghost wallets
+- [x] **Lock:** locks when unused or when your computer locks; a passkey opens it again
 - [ ] **Trade:** swap from a ghost wallet or your private balance, in one click
-- [ ] **Send:** Send dark and Pay many, from your private balance
+- [x] **Send dark** from your private balance
+- [ ] **Pay many** and **Unshield**
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites
       where you turn it on
@@ -69,8 +71,13 @@ sequenceDiagram
   it is replaced.
 - **The wallet travels sealed.** zsol.cc seals it with HPKE (RFC 9180: X25519, HKDF-SHA256,
   AES-256-GCM), bound to the code, the site and this extension's id, so it opens nowhere else.
-- **It stays in memory.** The panel keeps your wallet's seed in memory only. Disconnect, or
-  closing the panel, forgets it.
+- **Open only in memory.** While unlocked, the wallet's seed is kept in Chrome's session storage:
+  in memory, readable by the extension's own pages only, and gone when Chrome restarts or zSol
+  updates. Lock, Disconnect, the time you pick with nobody using it, or your computer locking
+  forgets it in every window.
+- **On disk only sealed.** With passkey unlock on, the seed is sealed with AES-256-GCM under a
+  key from the passkey's PRF extension. Touch ID, Windows Hello or the device's PIN opens it; the
+  sealed copy alone opens nothing, and the passkey signs nobody in.
 
 ## Safe by design
 
@@ -87,10 +94,15 @@ sequenceDiagram
 
 ### Permissions
 
-| What the extension asks Chrome for                  | Why                                                        |
-| --------------------------------------------------- | ---------------------------------------------------------- |
-| `sidePanel`                                         | Opens zSol in the side panel from the toolbar button       |
-| `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect |
+| What the extension asks Chrome for                  | Why                                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `sidePanel`                                         | Opens zSol in the side panel from the toolbar button                   |
+| `storage`                                           | Keeps the open wallet in memory across windows, and your lock settings |
+| `alarms`                                            | Checks once a minute whether the wallet should lock                    |
+| `idle`                                              | Locks the wallet when your computer locks                              |
+| `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect             |
+
+None of these shows a warning when you install.
 
 That is all. Every permission the extension adds is explained in its pull request.
 
@@ -98,15 +110,17 @@ That is all. Every permission the extension adds is explained in its pull reques
 
 Every line the extension runs is in this repository. Good places to start:
 
-| What                                        | Where                                                                            |
-| ------------------------------------------- | -------------------------------------------------------------------------------- |
-| Permissions and who may message the panel   | [`src/manifest.ts`](src/manifest.ts)                                             |
-| The one-time code                           | [`src/features/pairing/code.ts`](src/features/pairing/code.ts)                   |
-| The checks on every message from zsol.cc    | [`src/features/pairing/handler.ts`](src/features/pairing/handler.ts)             |
-| The sealed handover                         | [`src/features/pairing/protocol.ts`](src/features/pairing/protocol.ts)           |
-| Where the wallet is kept                    | [`src/features/session/session-store.ts`](src/features/session/session-store.ts) |
-| What every build is checked for             | [`scripts/check-build.mjs`](scripts/check-build.mjs)                             |
-| End-to-end tests against a stand-in zsol.cc | [`tests/e2e`](tests/e2e)                                                         |
+| What                                        | Where                                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| Permissions and who may message the panel   | [`src/manifest.ts`](src/manifest.ts)                                   |
+| The one-time code                           | [`src/features/pairing/code.ts`](src/features/pairing/code.ts)         |
+| The checks on every message from zsol.cc    | [`src/features/pairing/handler.ts`](src/features/pairing/handler.ts)   |
+| The sealed handover                         | [`src/features/pairing/protocol.ts`](src/features/pairing/protocol.ts) |
+| Where the wallet is kept                    | [`src/features/lock/vault.ts`](src/features/lock/vault.ts)             |
+| When it locks                               | [`src/entrypoints/background.ts`](src/entrypoints/background.ts)       |
+| The passkey seal                            | [`src/features/lock/passkey.ts`](src/features/lock/passkey.ts)         |
+| What every build is checked for             | [`scripts/check-build.mjs`](scripts/check-build.mjs)                   |
+| End-to-end tests against a stand-in zsol.cc | [`tests/e2e`](tests/e2e)                                               |
 
 ## Develop
 
