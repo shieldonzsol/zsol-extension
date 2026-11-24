@@ -28,6 +28,7 @@ import { plainAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { SOL, type Asset } from "@/features/rings/holdings";
 import { UNSHIELD_COST_LAMPORTS } from "@/features/rings/unshield";
+import { LookalikeLine, ReceiverHints } from "@/features/receivers/receiver-hints";
 import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
 import {
@@ -206,7 +207,9 @@ function UnshieldForm({
                 Anyone can see your zSol address paid the wallet you sign in with, which ties the
                 two.
               </span>
-            ) : null
+            ) : (
+              <ReceiverHints value={draft.to} kind="public" onPick={(to) => setDraft({ to })} />
+            )
           }
         />
         <TokenPicker
@@ -389,6 +392,7 @@ function ReviewCard({
             </span>
           ) : null}
         </div>
+        <LookalikeLine to={sent.to} />
         <PublicAndHidden
           seen={`Your zSol address paid ${short(sent.to)} ${show}: both addresses, the amount and the token.`}
           hidden="What else your private balance holds."

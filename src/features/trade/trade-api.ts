@@ -25,6 +25,7 @@ export const TRADE_REFUSALS = [
   "no-value",
   "signed-out",
   "same-token",
+  "update",
   "failed",
 ] as const;
 
@@ -81,13 +82,15 @@ async function ask(site: string, body: Record<string, unknown>): Promise<unknown
   throw new TradeUnavailable(
     isRefusal(code)
       ? code
-      : response.status === 401
-        ? "signed-out"
-        : response.status === 429
-          ? "busy"
-          : response.status >= 500
-            ? "unreachable"
-            : "failed",
+      : response.status === 426
+        ? "update"
+        : response.status === 401
+          ? "signed-out"
+          : response.status === 429
+            ? "busy"
+            : response.status >= 500
+              ? "unreachable"
+              : "failed",
     typeof wait === "number" && wait > 0 ? wait : undefined,
   );
 }

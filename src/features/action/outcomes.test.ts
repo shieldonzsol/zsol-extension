@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { feeAt } from "@/features/rings/amount-input";
 
-import { failureOf, shortfallOf } from "./outcomes";
+import { failureOf, shortfallOf, LeftAtAddress } from "./outcomes";
 import { SendUnanswered, SendUnconfirmed, SponsorRefused, SyncBehind } from "./sponsor";
 
 const sendFee = (amount: bigint) => feeAt(amount, 10n);
@@ -14,6 +14,11 @@ const SIGNATURE = signature(
 
 describe("what stopped a send", () => {
   it("never reads a send that may have landed as nothing moved", () => {
+    expect(failureOf(new LeftAtAddress("5sig"), true)).toEqual({
+      kind: "left",
+      maybeMoved: true,
+      signature: "5sig",
+    });
     expect(failureOf(new SendUnconfirmed(SIGNATURE), true)).toMatchObject({
       kind: "unconfirmed",
       maybeMoved: true,
@@ -35,6 +40,10 @@ describe("what stopped a send", () => {
 
   it("reads zSol's refusals and the SDK's reasons", () => {
     expect(failureOf(new SponsorRefused("sanctioned"), true).kind).toBe("sanctioned");
+    expect(failureOf(new SponsorRefused("update"), true)).toEqual({
+      kind: "update",
+      maybeMoved: false,
+    });
     expect(failureOf(new SponsorRefused("busy", 4.2), true)).toMatchObject({
       kind: "busy",
       retryAfter: 5,

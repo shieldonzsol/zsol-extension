@@ -28,6 +28,8 @@ import { formatAmount } from "@/features/rings/amounts";
 import { type Asset } from "@/features/rings/holdings";
 import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
+import { LookalikeLine, ReceiverHints } from "@/features/receivers/receiver-hints";
+
 import { SendWays } from "./send-ways";
 import {
   another,
@@ -183,7 +185,13 @@ function SendForm({
           value={draft.to}
           onChange={(to) => setDraft({ to })}
           invalid={toProblem !== null}
-          note={toProblem ? <ToProblem problem={toProblem} site={site} /> : null}
+          note={
+            toProblem ? (
+              <ToProblem problem={toProblem} site={site} />
+            ) : (
+              <ReceiverHints value={draft.to} kind="zsol" onPick={(to) => setDraft({ to })} />
+            )
+          }
         />
         <TokenPicker
           name="send-token"
@@ -363,6 +371,7 @@ function ReviewCard({
             charged: sent.fee > 0n,
           })}
         </p>
+        <LookalikeLine to={sent.to} />
         <PublicAndHidden
           seen="Your zSol address paid theirs, and when. zSol's fee is one more payment in the same transaction."
           hidden="The amount and the token."

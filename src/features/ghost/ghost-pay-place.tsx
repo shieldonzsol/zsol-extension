@@ -26,6 +26,7 @@ import { plainAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { SOL } from "@/features/rings/holdings";
 import { SendWays } from "@/features/send/send-ways";
+import { LookalikeLine, ReceiverHints } from "@/features/receivers/receiver-hints";
 import { useWallet } from "@/features/wallet/wallet-store";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +79,7 @@ const POOL_WORDS: Record<PoolStopCode, string> = {
   "failed-on-chain": "The deposit failed on Solana.",
   "status-unknown": "The deposit's answer never arrived.",
   mismatch: "zSol's server sent back a different deposit.",
+  update: "This version of zSol for Chrome is too old for zSol now. Update it to go on.",
   unknown: "Ghost Route's answer couldn't be read.",
 };
 
@@ -205,7 +207,9 @@ function PayForm({
           note={
             toProblem ? (
               <Problem problem={toProblem} />
-            ) : draft.ghost === null ? null : (
+            ) : draft.ghost === null ? (
+              <ReceiverHints value={draft.to} kind="public" onPick={(to) => setDraft({ to })} />
+            ) : (
               <span className="text-muted-foreground">
                 Ghost {String(draft.ghost + 1)}: one of your ghost wallets. Fund it ahead of time:
                 money that lands seconds before a trade is easy to match by size and time.
@@ -413,6 +417,7 @@ function ReviewCard({
             </span>
           ) : null}
         </div>
+        {built.ghost === null ? <LookalikeLine to={built.to} /> : null}
         <PublicAndHidden
           seen={`Your zSol address paid ${sol(built.amount)} into Ghost Route; later Ghost Route pays ${short(built.to)}.`}
           hidden="That the two are the same money: nothing on chain ties your private wallet to them."

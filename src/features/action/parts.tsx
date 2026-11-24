@@ -2,6 +2,7 @@
 // review's buttons, the order while it goes out, and every outcome with its next step.
 import { ExternalLinkIcon, LoaderCircleIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { browser } from "wxt/browser";
 
 import { placeHref, type PlaceId } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
@@ -333,6 +334,15 @@ export type FailureWords = Partial<
   Record<FailureFacts["kind"], { readonly title: string; readonly body: string }>
 >;
 
+/** Where this extension is updated: its page in the Chrome Web Store. */
+export function UpdateLink() {
+  return (
+    <ExternalLink href={`https://chromewebstore.google.com/detail/${browser.runtime.id}`}>
+      Update zSol for Chrome
+    </ExternalLink>
+  );
+}
+
 export function PrepareFailure({
   facts,
   words: own,
@@ -348,6 +358,7 @@ export function PrepareFailure({
         <p className="text-label text-pretty text-muted-foreground">{words.body}</p>
         {facts.retryAfter ? <Countdown seconds={facts.retryAfter} /> : null}
       </div>
+      {facts.kind === "update" ? <UpdateLink /> : null}
       {facts.kind === "signed-out" ? (
         <button
           type="button"
@@ -579,6 +590,7 @@ export function Failed({
           ? { label: "Try a smaller amount", onClick: () => onSmaller(plainAmount(half, decimals)) }
           : null;
       case "recipient":
+      case "update":
         return null;
       default:
         return { label: "Try again", onClick: onTryAgain };
@@ -604,6 +616,7 @@ export function Failed({
         {facts.kind === "recipient" ? (
           <ExternalLink href={`${site}/send#dark-link`}>Send a Dark link on zsol.cc</ExternalLink>
         ) : null}
+        {facts.kind === "update" ? <UpdateLink /> : null}
       </Card>
       {primary ? (
         <RetryButton

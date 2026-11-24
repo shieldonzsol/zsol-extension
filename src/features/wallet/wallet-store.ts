@@ -15,6 +15,7 @@ import { address, type Address } from "@solana/kit";
 import { useSyncExternalStore } from "react";
 
 import { closeOrders, openOrders, settleOrphans } from "@/features/orders/order-store";
+import { closeReceivers, openReceivers } from "@/features/receivers/receivers-store";
 import { checkAccount } from "@/features/rings/account";
 import {
   lastUnanswered,
@@ -206,6 +207,7 @@ export async function openWallet(seed: Uint8Array, site: string): Promise<void> 
       ...(restored ? { balances: balancesOf(restored), readAt } : {}),
     });
     void openOrders(seed, wallet).catch(() => undefined);
+    void openReceivers(seed, wallet).catch(() => undefined);
   } catch {
     patch(at, { reading: false, hitch: "failed" });
     return;
@@ -440,6 +442,7 @@ export function closeWallet(): void {
   if (settling !== null) clearInterval(settling);
   settling = null;
   closeOrders();
+  closeReceivers();
   publish({ kind: "closed" });
 }
 

@@ -22,6 +22,7 @@ export type PoolStopCode =
   | "failed-on-chain"
   | "status-unknown"
   | "mismatch"
+  | "update"
   | "unknown";
 
 export class PoolStopped extends Error {
@@ -53,6 +54,7 @@ const KNOWN: readonly PoolStopCode[] = [
   "status-unknown",
   "unreachable",
   "mismatch",
+  "update",
 ];
 
 const isKnown = (code: unknown): code is PoolStopCode =>
@@ -62,6 +64,7 @@ const codeOf = (said: unknown, status: number): PoolStopCode => {
   // The pool's own stop, when zSol's server passes one on; else zSol's word.
   const code = field(said, "stop") ?? field(said, "error");
   if (isKnown(code)) return code;
+  if (status === 426) return "update";
   if (status === 401) return "signed-out";
   if (status === 429) return "busy";
   if (status === 503) return "unavailable";

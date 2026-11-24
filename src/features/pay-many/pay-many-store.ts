@@ -10,6 +10,7 @@ import { shortfallOf, type Shortfall } from "@/features/action/outcomes";
 import { feeOn, leastFeeOn } from "@/features/action/terms";
 import { formatAmount } from "@/features/rings/amounts";
 import { heldIn, type Asset } from "@/features/rings/holdings";
+import { rememberReceiver } from "@/features/receivers/receivers-store";
 import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 import { MAX_PAYEES, parsePayList, splitPayments, type LineProblem, type PayRow } from "./pay-list";
@@ -60,6 +61,9 @@ function rowsOf(draft: PayManyDraft, own: string): readonly PayRow[] | PayManyPr
 
 const payMany = createAction<PayManyDraft, PayManyProblem, PayManyFacts>({
   kind: "pay-many",
+  afterDone: (review) => {
+    for (const row of review.rows) void rememberReceiver(row.to, "zsol");
+  },
   empty: () => ({ list: "", mint: SOL_MINT, rest: "" }),
   // After a list is paid, what was left of it comes next.
   another: (draft) => ({ list: draft.rest, mint: draft.mint, rest: "" }),

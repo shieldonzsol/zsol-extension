@@ -64,6 +64,10 @@ export const FAILURE_WORDS: Record<FailureKind, { readonly title: string; readon
       body: "zSol pays the network fee for a set number of private actions per account, so no one account can run its fee wallet dry. Your private balance is as it was.",
     },
     offline: { title: "You're offline. Nothing moved.", body: "Reconnect, then try again." },
+    update: {
+      title: "This version of zSol for Chrome is too old for zSol now. Nothing moved.",
+      body: "Update it to go on: your wallet and orders stay as they are.",
+    },
     left: {
       title: "It left your private balance and stopped at your zSol address.",
       body: "It waits there, in public. Move it back to private from your wallet, then try again.",

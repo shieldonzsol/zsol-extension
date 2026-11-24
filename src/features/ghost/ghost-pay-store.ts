@@ -11,6 +11,7 @@ import { readAmount, type AmountProblem } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { heldIn } from "@/features/rings/holdings";
 import { buildUnshield, UNSHIELD_COST_LAMPORTS } from "@/features/rings/unshield";
+import { rememberReceiver } from "@/features/receivers/receivers-store";
 import {
   ADDRESS_LOCK,
   inWalletLane,
@@ -85,6 +86,8 @@ export interface GhostPayFacts {
   readonly shielded: boolean;
   /** The plan's own name, made when it was reviewed. */
   readonly planId: string;
+  /** It funds one of this wallet's own ghost wallets: its number. */
+  readonly ghost: number | null;
 }
 
 export type Review = Built<GhostPayFacts>;
@@ -181,6 +184,7 @@ const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
         plan,
         shielded,
         planId: crypto.randomUUID(),
+        ghost: draft.ghost,
       },
     };
   },
@@ -239,7 +243,13 @@ const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
       });
     }
   },
-  afterDone: () => void readAgain(),
+  afterDone: (review) => {
+    void readAgain();
+    // A ghost wallet of one's own isn't someone paid.
+    if (review.ghost === null) {
+      void rememberReceiver(review.to, review.shielded ? "zsol" : "public");
+    }
+  },
   facts: (review) => ({
     amount: `${formatAmount(review.amount, 9)} SOL`,
     to: `${review.to.slice(0, 4)}…${review.to.slice(-4)}`,

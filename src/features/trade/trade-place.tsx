@@ -74,6 +74,7 @@ const ROUTE_WORDS: Record<TradeRefusal | "offline", string> = {
     "Neither side is SOL and Jupiter has no SOL price for it, so zSol's fee can't be set.",
   "signed-out": "Your sign-in ended. Sign the panel in again to trade.",
   "same-token": "Pick two different tokens.",
+  update: "This version of zSol for Chrome is too old for zSol now. Update it to trade.",
   failed: "zSol's answer couldn't be read.",
   offline: "You're offline.",
 };

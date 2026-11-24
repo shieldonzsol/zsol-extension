@@ -28,6 +28,8 @@ export type FailureKind =
   | "unreachable"
   /** It left the private balance for the zSol address and went no further: it waits there. */
   | "left"
+  /** zSol no longer serves this version of the panel. */
+  | "update"
   | Exclude<BuildStop, "build">
   | "failed";
 
@@ -65,6 +67,7 @@ const BY_CODE: Readonly<Record<string, FailureKind>> = {
   "rent-unpaid": "stale",
   busy: "busy",
   "failed-on-chain": "failed-on-chain",
+  update: "update",
 };
 
 const isNetworkError = (error: unknown) =>

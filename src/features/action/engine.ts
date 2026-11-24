@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 import { setBusy } from "@/features/lock/busy";
 import type { OrderFacts, OrderKind } from "@/features/orders/order-model";
 import { startOrder, type OrderHandle } from "@/features/orders/order-store";
-import { lastBusy, lastUnauthorized } from "@/features/rings/client";
+import { lastBusy, lastTooOld, lastUnauthorized } from "@/features/rings/client";
 import { readAgain, readBack, spending } from "@/features/wallet/wallet-store";
 
 import { failureOf, type FailureFacts } from "./outcomes";
@@ -131,6 +131,7 @@ const ORDER_STEP: Record<SendStep, string> = {
 
 /** Why preparing failed: zSol's own answers while it was built say more than the SDK's error. */
 function prepareFailure(error: unknown, started: number): FailureFacts {
+  if (lastTooOld() >= started) return { kind: "update", maybeMoved: false };
   if (navigator.onLine && lastUnauthorized() >= started) {
     return { kind: "signed-out", maybeMoved: false };
   }

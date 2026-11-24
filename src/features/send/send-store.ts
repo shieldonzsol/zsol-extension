@@ -10,6 +10,7 @@ import { feeOn, leastFeeOn } from "@/features/action/terms";
 import { readAmount, type AmountProblem } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
+import { rememberReceiver } from "@/features/receivers/receivers-store";
 import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 export interface SendDraft {
@@ -67,6 +68,7 @@ export function draftProblem(
 
 const send = createAction<SendDraft, SendProblem, SendFacts>({
   kind: "send-dark",
+  afterDone: (review) => void rememberReceiver(review.to, "zsol"),
   empty: () => ({ to: "", mint: SOL_MINT, amountText: "" }),
   another: (draft) => ({ to: "", mint: draft.mint, amountText: "" }),
   check: (draft, { own, signInWallet }) => draftProblem(draft, own, signInWallet),

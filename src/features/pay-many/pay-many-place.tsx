@@ -24,6 +24,7 @@ import { percentOf } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { type Asset } from "@/features/rings/holdings";
 import { SendWays } from "@/features/send/send-ways";
+import { LookalikeLine } from "@/features/receivers/receiver-hints";
 import { assetFor, useWallet } from "@/features/wallet/wallet-store";
 
 import {
@@ -408,6 +409,9 @@ function ReviewCard({
             charged: paid.fee > 0n,
           })}
         </p>
+        {paid.rows.map((row) => (
+          <LookalikeLine key={row.to} to={row.to} />
+        ))}
         <PublicAndHidden
           seen={`Your zSol address paid ${paid.rows.length === 1 ? "this address" : `these ${String(paid.rows.length)} addresses`}, and when. zSol's fee is one more payment in the same transaction.`}
           hidden="Who got how much, and the token."

@@ -17,6 +17,7 @@ import {
   UnshieldRentShort,
   UnshieldShort,
 } from "@/features/rings/unshield";
+import { rememberReceiver } from "@/features/receivers/receivers-store";
 import { assetFor, inWalletLane } from "@/features/wallet/wallet-store";
 
 export interface UnshieldDraft {
@@ -76,6 +77,7 @@ export function draftProblem(input: UnshieldDraft, own: string | null): Unshield
 
 const unshield = createAction<UnshieldDraft, UnshieldProblem, UnshieldFacts>({
   kind: "unshield",
+  afterDone: (review) => void rememberReceiver(review.to, "public"),
   empty: () => ({ to: "", mint: SOL_MINT, amountText: "" }),
   another: (draft) => ({ to: draft.to, mint: draft.mint, amountText: "" }),
   check: (draft, { own }) => draftProblem(draft, own),
