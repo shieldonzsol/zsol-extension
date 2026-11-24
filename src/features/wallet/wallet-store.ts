@@ -14,6 +14,7 @@ import { isWalletRegistered } from "@heliuslabs/spr/wallet";
 import { address, type Address } from "@solana/kit";
 import { useSyncExternalStore } from "react";
 
+import { closeOrders, openOrders, settleOrphans } from "@/features/orders/order-store";
 import { checkAccount } from "@/features/rings/account";
 import {
   lastUnanswered,
@@ -168,6 +169,7 @@ export async function openWallet(seed: Uint8Array, site: string): Promise<void> 
       address: wallet,
       ...(restored ? { balances: balancesOf(restored), readAt } : {}),
     });
+    void openOrders(seed, wallet).catch(() => undefined);
   } catch {
     patch(at, { reading: false, hitch: "failed" });
     return;
@@ -203,6 +205,24 @@ async function connectAndRead(at: number): Promise<void> {
     return;
   }
   await Promise.all([read(at), readGhosts(at)]);
+  watchOrders(at);
+}
+
+/** How often orders a closed window left behind are settled from the chain. */
+const SETTLE_EVERY_MS = 20_000;
+let settling: ReturnType<typeof setInterval> | null = null;
+
+/** Settles orders a closed window left behind, now and while the wallet is open. */
+function watchOrders(at: number) {
+  const settle = async () => {
+    const current = opened;
+    if (at !== turn || !current?.client) return;
+    const landed = await settleOrphans(current.client, owner(current)).catch(() => false);
+    if (landed && at === turn && view.kind === "open" && !view.reading) void read(at);
+  };
+  if (settling !== null) clearInterval(settling);
+  settling = setInterval(() => void settle(), SETTLE_EVERY_MS);
+  void settle();
 }
 
 /** One at a time: a read and a send never touch the wallet's notes at once. */
@@ -372,6 +392,9 @@ export function closeWallet(): void {
   turn += 1;
   opened = null;
   asked = null;
+  if (settling !== null) clearInterval(settling);
+  settling = null;
+  closeOrders();
   publish({ kind: "closed" });
 }
 

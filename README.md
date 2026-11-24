@@ -42,6 +42,7 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 - [x] **Lock:** locks when unused or when your computer locks; a passkey opens it again
 - [ ] **Trade:** swap from a ghost wallet or your private balance, in one click
 - [x] **Send dark** from your private balance
+- [x] **Orders:** every action with its id, sealed on your device, until it lands
 - [ ] **Pay many** and **Unshield**
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites

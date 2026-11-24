@@ -5,6 +5,8 @@ import { placeHref } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
 import { formatAmount, formatShown } from "@/features/rings/amounts";
 import { mostWithFee, percentOf, plainAmount, readAmount } from "@/features/rings/amount-input";
+import { useOrders } from "@/features/orders/order-store";
+import { OrderId, OrderTracker } from "@/features/orders/order-tracker";
 import { WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
 import { retrySignIn } from "@/features/session/session-store";
 import { useNow } from "@/features/wallet/use-now";
@@ -29,8 +31,7 @@ import {
   type Review,
   type SendState,
 } from "./send-store";
-import type { SendStep } from "./sponsor";
-import { AMOUNT_WORDS, FAILURE_WORDS, feeWords, STEP_WORDS, STEPS } from "./words";
+import { AMOUNT_WORDS, FAILURE_WORDS, feeWords } from "./words";
 
 const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
 /** A review older than this may carry a blockhash that no longer lands: prepare it again. */
@@ -101,9 +102,9 @@ function Stage({
   }
   if (send.kind === "review")
     return <ReviewCard review={send.review} signInWallet={signInWallet} />;
-  if (send.kind === "sending") return <Sending review={send.review} step={send.step} />;
+  if (send.kind === "sending") return <Sending order={send.order} site={site} />;
   if (send.kind === "done") {
-    return <Done review={send.review} signature={send.signature} site={site} />;
+    return <Done review={send.review} signature={send.signature} site={site} order={send.order} />;
   }
   return <Failed send={send} site={site} signInWallet={signInWallet} />;
 }
@@ -547,42 +548,17 @@ function ReviewCard({
   );
 }
 
-function Sending({ review: sent, step }: { readonly review: Review; readonly step: SendStep }) {
-  const at = STEPS.indexOf(step);
+function Sending({ order, site }: { readonly order: string; readonly site: string }) {
+  const orders = useOrders();
+  const found = orders.find((each) => each.id === order);
   return (
-    <Card>
-      <p className="text-sm text-pretty">
-        Sending {formatAmount(sent.amount, sent.asset.decimals)} {sent.asset.symbol} to{" "}
-        <span className="font-mono" translate="no">
-          {short(sent.to)}
-        </span>
-        . Keep this panel open until it lands.
+    <div className="flex flex-col gap-3">
+      {found ? <OrderTracker order={found} site={site} /> : null}
+      <p className="px-1 text-label text-pretty text-muted-foreground">
+        Keep zSol open until it lands. If the panel closes, the order settles from the chain when
+        you open it again, and it is never sent twice.
       </p>
-      <ol aria-label="Progress" className="flex flex-col gap-2.5">
-        {STEPS.map((each, index) => (
-          <li
-            key={each}
-            aria-current={index === at ? "step" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 text-sm",
-              index > at ? "text-muted-foreground" : "text-foreground",
-            )}
-          >
-            {index < at ? (
-              <CheckIcon className="size-4 text-ok" strokeWidth={2} />
-            ) : index === at ? (
-              <LoaderCircleIcon className="size-4 animate-spin text-primary" strokeWidth={2} />
-            ) : (
-              <span aria-hidden="true" className="mx-1.5 size-1 rounded-full bg-muted-foreground" />
-            )}
-            {STEP_WORDS[each]}
-          </li>
-        ))}
-      </ol>
-      <output aria-live="polite" className="sr-only">
-        {STEP_WORDS[step]}
-      </output>
-    </Card>
+    </div>
   );
 }
 
@@ -590,10 +566,12 @@ function Done({
   review: sent,
   signature,
   site,
+  order,
 }: {
   readonly review: Review;
   readonly signature: string;
   readonly site: string;
+  readonly order: string;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -610,6 +588,7 @@ function Done({
             </span>
             . Your balance is up to date.
           </p>
+          <OrderId id={order} />
         </output>
         <ExternalLink href={`${site}/tx/${signature}`}>See what the public sees</ExternalLink>
       </Card>
@@ -686,6 +665,7 @@ function Failed({
         <div role="alert" className="flex flex-col gap-1.5">
           <p className="text-base font-semibold text-pretty">{words.title}</p>
           <p className="text-sm text-pretty text-muted-foreground">{words.body}</p>
+          <OrderId id={send.order} />
           {checked === "pending" ? (
             <p className="text-label text-pretty">
               Not landed yet. It can take up to a minute: check again shortly.

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { usePlace } from "@/app/places";
 import { PlaceTabs } from "@/components/place-tabs";
+import { OrdersPlace } from "@/features/orders/orders-place";
 import { SendPlace } from "@/features/send/send-place";
 import { forgetSend } from "@/features/send/send-store";
 
@@ -36,7 +37,9 @@ export default function SignedIn({
   return (
     <>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        {place === "send" ? (
+        {place === "orders" ? (
+          <OrdersPlace site={site} />
+        ) : place === "send" ? (
           <SendPlace site={site} signInWallet={signInWallet} />
         ) : (
           <WalletPlace seed={seed} site={site} signInWallet={signInWallet} passkey={passkey} />

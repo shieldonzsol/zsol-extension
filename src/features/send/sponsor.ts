@@ -4,6 +4,7 @@
 // it back. A lost answer or a send not seen landing is never read as "nothing moved".
 import {
   address,
+  getBase58Decoder,
   getBase64Decoder,
   getBase64EncodedWireTransaction,
   partiallySignTransactionWithSigners,
@@ -189,6 +190,10 @@ export async function submitSponsored(input: {
   readonly spender: Spender;
   readonly transaction: Transaction;
   readonly onStep: (step: SendStep) => void;
+  /** The private wallet signed it: its own signature, before anything is sent. */
+  readonly onSigned?: (signature: string) => void;
+  /** zSol sent it: the transaction's signature. */
+  readonly onSent?: (signature: string) => void;
   /** Reads the private wallet again once the send landed at `slot`. */
   readonly readBack: (slot: bigint) => Promise<void>;
 }): Promise<Signature> {
@@ -197,6 +202,8 @@ export async function submitSponsored(input: {
     [input.spender.keypair.toSolanaSigner()],
     input.transaction,
   );
+  const own = signed.signatures[input.spender.keypair.shieldedAddress().solanaAddress()];
+  if (own) input.onSigned?.(getBase58Decoder().decode(own));
   const keys = await sponsorKeys(input.client, input.spender, signed);
   const body = JSON.stringify({
     transaction: getBase64EncodedWireTransaction(signed),
@@ -231,6 +238,7 @@ export async function submitSponsored(input: {
     );
   }
   const sent = toSignature(signature);
+  input.onSent?.(sent);
   input.onStep("confirming");
   const slot = await input.client.confirmTransaction(sent).catch((cause: unknown) => {
     throw new SendUnconfirmed(sent, { cause });

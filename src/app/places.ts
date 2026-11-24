@@ -1,9 +1,10 @@
-import { ArrowUpRightIcon, WalletIcon, type LucideIcon } from "lucide-react";
+import { ArrowUpRightIcon, ListChecksIcon, WalletIcon, type LucideIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 export const PLACES = [
   { id: "wallet", label: "Wallet", icon: WalletIcon },
   { id: "send", label: "Send", icon: ArrowUpRightIcon },
+  { id: "orders", label: "Orders", icon: ListChecksIcon },
 ] as const satisfies readonly { id: string; label: string; icon: LucideIcon }[];
 
 export type PlaceId = (typeof PLACES)[number]["id"];

@@ -7,12 +7,15 @@ import { address, isAddress, type Address, type Transaction } from "@solana/kit"
 import { useSyncExternalStore } from "react";
 
 import { setBusy } from "@/features/lock/busy";
+import { startOrder, type OrderHandle } from "@/features/orders/order-store";
 import { feeAt, readAmount, type AmountProblem } from "@/features/rings/amount-input";
+import { formatAmount } from "@/features/rings/amounts";
 import { lastBusy, lastUnauthorized } from "@/features/rings/client";
 import { heldIn, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
 import { inWalletLane, readAgain, readBack, spending } from "@/features/wallet/wallet-store";
 
 import { failureOf, shortfallOf, type FailureFacts, type Shortfall } from "./outcomes";
+import { FAILURE_WORDS } from "./words";
 import {
   checkLanded,
   DEFAULT_SEND_FEE_BPS,
@@ -63,10 +66,21 @@ export type SendState =
       readonly failure: FailureFacts | null;
     }
   | { readonly kind: "review"; readonly review: Review }
-  | { readonly kind: "sending"; readonly review: Review; readonly step: SendStep }
-  | { readonly kind: "done"; readonly review: Review; readonly signature: string }
+  | {
+      readonly kind: "sending";
+      readonly review: Review;
+      readonly step: SendStep;
+      readonly order: string;
+    }
+  | {
+      readonly kind: "done";
+      readonly review: Review;
+      readonly signature: string;
+      readonly order: string;
+    }
   | {
       readonly kind: "failed";
+      readonly order: string;
       readonly review: Review;
       readonly facts: FailureFacts;
       readonly checking: boolean;
@@ -286,28 +300,67 @@ export function back() {
 }
 
 /** Signs and has zSol send it; the outcome stays on screen until the next send. */
+/** The send's order, while the panel follows it. */
+let order: OrderHandle | null = null;
+
+const ORDER_STEP: Record<SendStep, string> = {
+  signing: "sign",
+  sending: "send",
+  confirming: "land",
+  syncing: "read",
+};
+
+const short = (to: string) => `${to.slice(0, 4)}…${to.slice(-4)}`;
+
+/** Signs and has zSol send it; the outcome stays on screen until the next send. */
 export async function confirm(): Promise<void> {
   if (state.kind !== "review") return;
   const open = spending();
   if (!open) return;
   const { review: sent } = state;
   lastReview = null;
-  setState({ kind: "sending", review: sent, step: "signing" });
+  const handle = startOrder(
+    "send-dark",
+    {
+      amount: `${formatAmount(sent.amount, sent.asset.decimals)} ${sent.asset.symbol}`,
+      to: short(sent.to),
+    },
+    ["sign", "send", "land", "read"],
+  );
+  order = handle;
+  setState({ kind: "sending", review: sent, step: "signing", order: handle.id });
+  handle.at("sign");
   try {
     const signature = await submitSponsored({
       site: open.site,
       client: open.client,
       spender: open.spender,
       transaction: sent.transaction,
-      onStep: (step) => setState({ kind: "sending", review: sent, step }),
+      onStep: (step) => {
+        handle.at(ORDER_STEP[step]);
+        setState({ kind: "sending", review: sent, step, order: handle.id });
+      },
+      onSigned: handle.signed,
+      onSent: handle.sent,
       readBack,
     });
-    setState({ kind: "done", review: sent, signature });
+    handle.done();
+    setState({ kind: "done", review: sent, signature, order: handle.id });
   } catch (error) {
     const facts = failureOf(error, navigator.onLine);
+    if (facts.maybeMoved && facts.kind !== "landed-unsynced") handle.unsure();
+    else if (facts.kind === "landed-unsynced") handle.done();
+    else handle.stop(FAILURE_WORDS[facts.kind]);
     // zSol found the fee short: its terms changed, so the next review reads them again.
     if (facts.kind === "stale") setup = null;
-    setState({ kind: "failed", review: sent, facts, checking: false, checked: null });
+    setState({
+      kind: "failed",
+      review: sent,
+      facts,
+      checking: false,
+      checked: null,
+      order: handle.id,
+    });
     // Spent elsewhere, or failed on chain: what the balance holds now decides the next try.
     if (!facts.maybeMoved) void readAgain();
   }
@@ -326,14 +379,17 @@ export async function checkAgain(): Promise<void> {
   const landed = await checkLanded(open.client, facts.signature, readBack);
   if (state.kind !== "failed") return;
   if (landed === "landed") {
-    setState({ kind: "done", review: sent, signature: facts.signature });
+    order?.done();
+    setState({ kind: "done", review: sent, signature: facts.signature, order: state.order });
   } else if (landed === "failed") {
+    order?.stop(FAILURE_WORDS["failed-on-chain"]);
     setState({
       kind: "failed",
       review: sent,
       facts: { kind: "failed-on-chain", maybeMoved: false, signature: facts.signature },
       checking: false,
       checked: "failed",
+      order: state.order,
     });
     void readAgain();
   } else {
