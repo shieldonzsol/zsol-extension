@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { tabOf, usePlace } from "@/app/places";
 import { PlaceTabs } from "@/components/place-tabs";
 import { OrdersPlace } from "@/features/orders/orders-place";
+import { PayManyPlace } from "@/features/pay-many/pay-many-place";
+import { forgetPayMany } from "@/features/pay-many/pay-many-store";
 import { SendPlace } from "@/features/send/send-place";
 import { UnshieldPlace } from "@/features/unshield/unshield-place";
 import { forgetSend } from "@/features/send/send-store";
@@ -32,6 +34,7 @@ export default function SignedIn({
       closeWallet();
       forgetSend();
       forgetUnshield();
+      forgetPayMany();
     };
   }, [seed, site]);
 
@@ -40,7 +43,9 @@ export default function SignedIn({
   return (
     <>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        {place === "unshield" ? (
+        {place === "pay-many" ? (
+          <PayManyPlace site={site} signInWallet={signInWallet} />
+        ) : place === "unshield" ? (
           <UnshieldPlace site={site} signInWallet={signInWallet} />
         ) : place === "orders" ? (
           <OrdersPlace site={site} />

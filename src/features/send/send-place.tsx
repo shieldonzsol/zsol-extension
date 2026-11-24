@@ -28,6 +28,7 @@ import { formatAmount } from "@/features/rings/amounts";
 import { WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
 import { useWallet } from "@/features/wallet/wallet-store";
 
+import { SendWays } from "./send-ways";
 import {
   another,
   back,
@@ -63,6 +64,7 @@ export function SendPlace({
   }, [site]);
   return (
     <div className="flex flex-col gap-4 p-4">
+      <SendWays current="send" />
       <Heading title={TITLE} body={BODY} />
       {wallet.kind !== "open" || wallet.balances === null ? (
         <NotOpenYet what="Send" />

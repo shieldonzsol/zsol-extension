@@ -14,6 +14,9 @@ describe("a typed amount", () => {
   it("names what is wrong, never guessing", () => {
     expect(readAmount("", 9)).toEqual({ ok: false, problem: "empty" });
     expect(readAmount("1,5", 9)).toEqual({ ok: false, problem: "comma" });
+    expect(readAmount("0,001", 9)).toEqual({ ok: false, problem: "comma" });
+    expect(readAmount("0,500.5", 9)).toEqual({ ok: false, problem: "comma" });
+    expect(readAmount("1,000", 9)).toEqual({ ok: true, amount: 1_000_000_000_000n });
     expect(readAmount("abc", 9)).toEqual({ ok: false, problem: "not-amount" });
     expect(readAmount("0.0000001", 6)).toEqual({ ok: false, problem: "decimals" });
     expect(readAmount("0", 9)).toEqual({ ok: false, problem: "zero" });

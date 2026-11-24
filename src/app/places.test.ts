@@ -10,6 +10,8 @@ describe("places", () => {
     expect(placeFromHash("#/unshield")).toBe("unshield");
     expect(tabOf("unshield")).toBe("wallet");
     expect(tabOf("send")).toBe("send");
+    expect(placeFromHash("#/pay-many")).toBe("pay-many");
+    expect(tabOf("pay-many")).toBe("send");
     expect(placeFromHash("")).toBe("wallet");
     expect(placeFromHash("#/elsewhere")).toBe("wallet");
   });

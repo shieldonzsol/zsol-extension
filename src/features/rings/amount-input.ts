@@ -17,7 +17,8 @@ export function readAmount(text: string, decimals: number): TypedAmount {
   if (trimmed === "") return { ok: false, problem: "empty" };
   let plain = trimmed;
   if (trimmed.includes(",")) {
-    if (!GROUPED.test(trimmed)) {
+    // A thousands group never starts with "0,": "0,001" is a decimal comma, never one thousand.
+    if (!GROUPED.test(trimmed) || trimmed.startsWith("0,")) {
       return /^[\d.,]+$/.test(trimmed)
         ? { ok: false, problem: "comma" }
         : { ok: false, problem: "not-amount" };
