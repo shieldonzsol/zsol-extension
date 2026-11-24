@@ -27,6 +27,7 @@ import { AMOUNT_WORDS } from "@/features/action/words";
 import { plainAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { SOL, WALLET_ASSETS, type Asset } from "@/features/rings/holdings";
+import { UNSHIELD_COST_LAMPORTS } from "@/features/rings/unshield";
 import { useWallet } from "@/features/wallet/wallet-store";
 
 import {
@@ -144,6 +145,8 @@ function Stage({
   );
 }
 
+const positiveOr0 = (value: bigint) => (value > 0n ? value : 0n);
+
 function UnshieldForm({
   state,
   signInWallet,
@@ -163,6 +166,9 @@ function UnshieldForm({
       ? problem
       : null;
   const toSignIn = draft.to.trim() === signInWallet;
+  const isSol = asset.mint === SOL.mint;
+  // SOL out pays its network fee from the same SOL: Max leaves room for it.
+  const most = isSol ? positiveOr0(held(asset.mint) - UNSHIELD_COST_LAMPORTS) : held(asset.mint);
   return (
     <form
       className="flex flex-col gap-4"
@@ -214,17 +220,16 @@ function UnshieldForm({
           asset={asset}
           value={draft.amountText}
           onChange={(amountText) => setDraft({ amountText })}
-          most={held(asset.mint)}
+          most={most}
           invalid={amountProblem !== null}
           note={
             amountProblem ? (
               <AmountProblemLine problem={amountProblem} asset={asset} />
             ) : (
               <span className="text-muted-foreground">
-                No fee of zSol's, and zSol pays the network fee.
-                {asset.mint === SOL.mint
-                  ? ""
-                  : " If the address has no account for this token yet, opening it takes a little of your private SOL."}
+                {isSol
+                  ? `No fee of zSol's. Its network fee, about ${formatAmount(UNSHIELD_COST_LAMPORTS, 9)} SOL, comes from your private SOL.`
+                  : "No fee of zSol's, and zSol pays the network fee. If the address has no account for this token yet, opening it and the network fee take a little of your private SOL."}
               </span>
             )
           }
@@ -271,7 +276,8 @@ function AmountProblemLine({
   switch (problem.kind) {
     case "amount":
       return <ProblemLine text={AMOUNT_WORDS[problem.problem](asset.symbol, asset.decimals)} />;
-    case "short":
+    case "short": {
+      const most = positiveOr0(problem.held - problem.fee);
       return (
         <ProblemLine
           text={
@@ -279,28 +285,34 @@ function AmountProblemLine({
               ? `Your private balance holds no ${asset.symbol}.`
               : `Your private balance holds ${show(problem.held)} ${asset.symbol}.`
           }
-          next={`This needs ${show(problem.amount)} ${asset.symbol}.`}
+          next={
+            problem.fee > 0n
+              ? `This needs ${show(problem.amount + problem.fee)} ${asset.symbol}: ${show(problem.amount)} plus its network fee of ${show(problem.fee)}.`
+              : `This needs ${show(problem.amount)} ${asset.symbol}.`
+          }
           action={
-            problem.held > 0n ? (
+            most > 0n ? (
               <button
                 type="button"
-                onClick={() => setDraft({ amountText: plainAmount(problem.held, asset.decimals) })}
+                onClick={() => setDraft({ amountText: plainAmount(most, asset.decimals) })}
                 className={buttonVariants({
                   variant: "outline",
                   size: "sm",
                   className: "self-start",
                 })}
               >
-                Unshield all of it: {show(problem.held)} {asset.symbol}
+                {problem.fee > 0n ? "Unshield the most you can" : "Unshield all of it"}:{" "}
+                {show(most)} {asset.symbol}
               </button>
             ) : null
           }
         />
       );
+    }
     case "rent-short":
       return (
         <ProblemLine
-          text={`Opening their ${asset.symbol} account takes ${show(problem.rent, 9)} SOL from your private balance.`}
+          text={`Opening their ${asset.symbol} account and the network fee take ${show(problem.rent, 9)} SOL from your private balance.`}
           next={`It holds ${show(problem.held, 9)} SOL. Go dark with a little SOL first, or unshield to an address that already holds ${asset.symbol}.`}
         />
       );
@@ -360,7 +372,11 @@ function ReviewCard({
           </span>
         </div>
         <div className="flex flex-col gap-1 text-label text-pretty text-muted-foreground">
-          <span>No fee of zSol's, and zSol pays the network fee.</span>
+          <span>
+            {sent.networkFee > 0n
+              ? `No fee of zSol's. Its network fee, ${formatAmount(sent.networkFee, 9)} SOL, comes from your private balance in the same transaction.`
+              : "No fee of zSol's, and zSol pays the network fee."}
+          </span>
           {sent.rent > 0n ? (
             <span>
               Opening their {sent.asset.symbol} account takes {formatAmount(sent.rent, 9)} SOL from
