@@ -1,5 +1,8 @@
 import type { Address } from "@solana/kit";
 import { useEffect, useState } from "react";
+import { browser } from "wxt/browser";
+
+import { tokenInfo } from "@/features/rings/token-info";
 
 import { readAmount } from "@/features/rings/amount-input";
 import { publicMoneyOf, type PublicMoney } from "@/features/rings/sweep";
@@ -13,7 +16,8 @@ import {
   type TradeRefusal,
   type TradeToken,
 } from "./trade-api";
-import type { TradeDraft } from "./trade-store";
+import { mintsInUrl } from "./page-token";
+import type { TradeDraft, TradePick } from "./trade-store";
 
 export type LiveQuote =
   | { readonly kind: "none" }
@@ -121,4 +125,42 @@ export function useTokenSearch(site: string, query: string): TokenSearch {
   }, [site, asked]);
   if (asked.length < 2) return { kind: "idle" };
   return answered && answered.key === asked ? answered.result : { kind: "searching" };
+}
+
+/**
+ * The token on the page the panel was opened from, when Chrome lets the panel read its address:
+ * read again when another tab comes forward or the page changes.
+ */
+export function usePageToken(site: string): TradePick | null {
+  const [found, setFound] = useState<TradePick | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const read = async () => {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+      const open = spending();
+      const mints = tab?.url && open ? mintsInUrl(tab.url) : [];
+      for (const mint of mints) {
+        // oxlint-disable-next-line no-await-in-loop -- the first that is a token wins.
+        const info = open ? await tokenInfo(site, open.client, mint).catch(() => null) : null;
+        if (info) {
+          if (alive) setFound({ mint, symbol: info.symbol, decimals: info.decimals });
+          return;
+        }
+      }
+      if (alive) setFound(null);
+    };
+    const onUpdated = (_: number, change: { status?: string }) => {
+      if (change.status === "complete") void read();
+    };
+    const onActivated = () => void read();
+    void read();
+    browser.tabs.onActivated.addListener(onActivated);
+    browser.tabs.onUpdated.addListener(onUpdated);
+    return () => {
+      alive = false;
+      browser.tabs.onActivated.removeListener(onActivated);
+      browser.tabs.onUpdated.removeListener(onUpdated);
+    };
+  }, [site]);
+  return found;
 }

@@ -30,7 +30,13 @@ import { useWallet, type GhostRow } from "@/features/wallet/wallet-store";
 import { cn } from "@/lib/utils";
 
 import { isSol, PRIVATE_SOL, type TradeRefusal } from "./trade-api";
-import { useGhostMoney, useLiveQuote, useTokenSearch, type LiveQuote } from "./trade-hooks";
+import {
+  useGhostMoney,
+  useLiveQuote,
+  usePageToken,
+  useTokenSearch,
+  type LiveQuote,
+} from "./trade-hooks";
 import {
   another,
   back,
@@ -184,6 +190,7 @@ function TradeForm({
   const ghostAddress = draft.source.kind === "ghost" ? draft.source.address : null;
   const ghostMoney = useGhostMoney(ghostAddress);
   const quote = useLiveQuote(site, draft);
+  const pageToken = usePageToken(site);
   const ids = { amount: useId(), amountNote: useId() };
   const ghosts = wallet.kind === "open" ? (wallet.ghosts?.rows ?? []) : [];
   const heldOf = (mint: string): bigint | null => {
@@ -212,6 +219,29 @@ function TradeForm({
         void review(signInWallet);
       }}
     >
+      {pageToken && pageToken.mint !== draft.to?.mint ? (
+        <div className="flex items-center justify-between gap-3 rounded-[10px] border border-border bg-card px-4 py-3">
+          <span className="flex min-w-0 flex-col">
+            <span className="text-label text-muted-foreground">On this page</span>
+            <span className="truncate text-sm font-medium" title={pageToken.mint} translate="no">
+              {pageToken.symbol}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setDraft(
+                draft.from.mint === pageToken.mint
+                  ? { from: SOL_PICK, to: pageToken, amountText: "" }
+                  : { to: pageToken },
+              )
+            }
+            className={buttonVariants({ size: "sm" })}
+          >
+            Trade it
+          </button>
+        </div>
+      ) : null}
       <SourcePicker source={draft.source} ghosts={ghosts} site={site} />
       <Card>
         <FromPicker draft={draft} ghostMoney={ghostMoney} heldOf={heldOf} />
@@ -421,7 +451,8 @@ function FromPicker({
 
 function ToPicker({ site, draft }: { readonly site: string; readonly draft: TradeDraft }) {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(draft.to === null);
+  // Searching only when asked for: a token picked anywhere shows as picked.
+  const [open, setOpen] = useState(false);
   const found = useTokenSearch(site, query);
   const inputId = useId();
   const quick: TradePick[] = [

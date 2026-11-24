@@ -7,7 +7,7 @@ const problems = [];
 
 const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
 
-const allowedPermissions = new Set(["sidePanel", "storage", "alarms", "idle"]);
+const allowedPermissions = new Set(["sidePanel", "storage", "alarms", "idle", "activeTab"]);
 for (const permission of manifest.permissions ?? []) {
   if (!allowedPermissions.has(permission)) problems.push(`manifest asks for "${permission}"`);
 }

@@ -88,8 +88,9 @@ sequenceDiagram
 
 - **Your keys stay on your device.** The panel signs on your machine; nothing it holds is sent to
   us in the clear.
-- **The fewest permissions possible.** No access to the pages you visit, no content scripts, no
-  host permissions. The overlay will ask for a site only when you turn it on there.
+- **The fewest permissions possible.** No access to the pages you visit beyond the address of
+  the tab you open zSol from, no content scripts, no host permissions. The overlay will ask for a
+  site only when you turn it on there.
 - **No code from the network.** Everything the extension runs ships inside the package.
   `pnpm check:build` fails any build that loads a script from the network or asks for a
   permission not on its list.
@@ -99,13 +100,14 @@ sequenceDiagram
 
 ### Permissions
 
-| What the extension asks Chrome for                  | Why                                                                    |
-| --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `sidePanel`                                         | Opens zSol in the side panel from the toolbar button                   |
-| `storage`                                           | Keeps the open wallet in memory across windows, and your lock settings |
-| `alarms`                                            | Checks once a minute whether the wallet should lock                    |
-| `idle`                                              | Locks the wallet when your computer locks                              |
-| `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect             |
+| What the extension asks Chrome for                  | Why                                                                                                                   |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `sidePanel`                                         | Opens zSol in the side panel from the toolbar button                                                                  |
+| `storage`                                           | Keeps the open wallet in memory across windows, and your lock settings                                                |
+| `alarms`                                            | Checks once a minute whether the wallet should lock                                                                   |
+| `idle`                                              | Locks the wallet when your computer locks                                                                             |
+| `activeTab`                                         | Reads the address of the tab you open zSol from, to offer the token on that page. That tab only, while you stay on it |
+| `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect                                                            |
 
 None of these shows a warning when you install.
 

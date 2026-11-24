@@ -5,8 +5,8 @@ import { manifestFor } from "../src/manifest";
 describe("manifest", () => {
   const manifest = manifestFor("production");
 
-  it("asks only for the side panel, its storage, the lock's timer and the computer's lock", () => {
-    expect(manifest.permissions).toEqual(["sidePanel", "storage", "alarms", "idle"]);
+  it("asks only for the side panel, its storage, the lock's timer, the computer's lock and the tab it opened from", () => {
+    expect(manifest.permissions).toEqual(["sidePanel", "storage", "alarms", "idle", "activeTab"]);
   });
 
   it("reaches no website and runs inside none", () => {
