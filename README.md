@@ -48,6 +48,8 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 - [x] **Move to private:** what reached your zSol address in public, into your private balance
 - [x] **Pay many:** up to 14 zSol addresses in one private transaction, a list pasted or a CSV
 - [x] **Ghost pay:** any address paid through Ghost Route, at once or in timed parts
+- [x] **Dark links:** a link that holds any token, for anyone, even someone new to zSol; take
+      it back until it's claimed, or claim a link someone sent you
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
 - [x] **Over your terminal:** a zSol chip on Axiom, GMGN, Terminal and more, only on the sites
       where you turn it on: one click buys or sells from a ghost wallet
@@ -138,6 +140,7 @@ Every line the extension runs is in this repository. Good places to start:
 | What a ghost swap is checked for              | [`src/features/rings/ghost-swap.ts`](src/features/rings/ghost-swap.ts)       |
 | How a trade from the private balance is built | [`src/features/rings/trade-build.ts`](src/features/rings/trade-build.ts)     |
 | What a Ghost pay deposit is checked for       | [`src/features/ghost/deposit-check.ts`](src/features/ghost/deposit-check.ts) |
+| Where a Dark link's key comes from            | [`src/features/rings/links.ts`](src/features/rings/links.ts)                 |
 | What every build is checked for               | [`scripts/check-build.mjs`](scripts/check-build.mjs)                         |
 | End-to-end tests against a stand-in zsol.cc   | [`tests/e2e`](tests/e2e)                                                     |
 
