@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { fundingFeeOn } from "@/features/action/terms";
+
 import { draftProblem, feeOn } from "./send-store";
 
 const SOL = "11111111111111111111111111111111";
@@ -35,5 +37,18 @@ describe("a send's draft", () => {
     expect(feeOn(SOL, 1_000_000n, floored)).toBe(30_000n);
     expect(feeOn(SOL, 100_000_000n, floored)).toBe(100_000n);
     expect(feeOn(USDC, 1_000_000n, floored)).toBe(0n);
+  });
+
+  it("adds the claim's network fee to a Dark link's fee, on the tokens zSol charges", () => {
+    const terms = {
+      feeAssets: new Set([SOL]),
+      sendFeeBps: 10n,
+      sendFeeMinimums: new Map([[SOL, 30_000n]]),
+      fundingFeeAhead: new Map([[SOL, 30_000n]]),
+    };
+    expect(fundingFeeOn(SOL, 1_000_000n, terms)).toBe(60_000n);
+    expect(fundingFeeOn(SOL, 100_000_000n, terms)).toBe(130_000n);
+    expect(fundingFeeOn(USDC, 1_000_000n, terms)).toBe(0n);
+    expect(fundingFeeOn(SOL, 1_000_000n, { ...terms, fundingFeeAhead: new Map() })).toBe(30_000n);
   });
 });

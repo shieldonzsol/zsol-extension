@@ -216,6 +216,12 @@ function BalanceCard({ wallet, site }: { readonly wallet: Opened; readonly site:
             Unshield
           </a>
           <a
+            href={placeHref("claim")}
+            className={buttonVariants({ variant: "ghost", size: "sm", className: "col-span-2" })}
+          >
+            Claim a Dark link someone sent you
+          </a>
+          <a
             href={`${site}/wallet#go-dark`}
             target="_blank"
             rel="noreferrer"
@@ -234,6 +240,16 @@ function BalanceCard({ wallet, site }: { readonly wallet: Opened; readonly site:
             there.
           </p>
           <ExternalLink href={`${site}/wallet#go-dark`}>Go dark on zsol.cc</ExternalLink>
+          <a
+            href={placeHref("claim")}
+            className={buttonVariants({
+              variant: "ghost",
+              size: "sm",
+              className: "-ml-2 self-start",
+            })}
+          >
+            Claim a Dark link someone sent you
+          </a>
         </div>
       ) : null}
       {wallet.address === null ? null : (

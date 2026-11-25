@@ -1,7 +1,13 @@
 // What zSol's fee wallet is handed with a send it pays the network fee for: the transaction's
 // own viewing key, found from the sender's keys, and each receiver's nullifier key and token, so
 // it can open every output to someone else and check it. Never the sender's own keys.
-import type { LocalKeys, ShieldedKeypair, Wallet, WalletUtxo } from "@heliuslabs/spr";
+import type {
+  LocalKeys,
+  ShieldedAddress,
+  ShieldedKeypair,
+  Wallet,
+  WalletUtxo,
+} from "@heliuslabs/spr";
 import type { SprClient } from "@heliuslabs/spr/client";
 import { bytes16, X25519PublicKey } from "@heliuslabs/spr/keypair";
 import { decodeConfidential, decodeOutputData } from "@heliuslabs/spr/transaction";
@@ -35,10 +41,15 @@ export interface Spender {
   readonly wallet: Wallet;
 }
 
+/**
+ * `known`: receivers whose keys are in hand, such as a Dark link's one-time wallet, which is never
+ * registered; every other receiver's keys are read from its registration.
+ */
 export async function sponsorKeys(
   client: SprClient,
   spender: Spender,
   transaction: Pick<Transaction, "messageBytes">,
+  known: readonly ShieldedAddress[] = [],
 ): Promise<SponsorKeys> {
   const ring = ringsTransactOf(transaction);
   if (!ring) throw new SponsorKeysError("This is not a Rings transaction.");
@@ -81,13 +92,18 @@ export async function sponsorKeys(
         slot,
       );
       const { assetId } = decodeConfidential(plain);
-      // oxlint-disable-next-line no-await-in-loop -- one receiver or two, in order.
-      const record = await fetchUserRecord({ rpc: client, owner });
-      if (!record) throw new SponsorKeysError(`No private wallet is registered at ${owner}.`);
+      const listed = known.find((each) => each.solanaAddress() === owner);
+      const nullifierPublicKey =
+        listed?.nullifierPublicKey ??
+        // oxlint-disable-next-line no-await-in-loop -- one receiver or two, in order.
+        (await fetchUserRecord({ rpc: client, owner }))?.nullifierPublicKey;
+      if (!nullifierPublicKey) {
+        throw new SponsorKeysError(`No private wallet is registered at ${owner}.`);
+      }
       receivers.push({
         slot,
         asset: spender.wallet.registry.resolve(assetId),
-        nullifierPublicKey: new Uint8Array(record.nullifierPublicKey),
+        nullifierPublicKey: new Uint8Array(nullifierPublicKey),
       });
     }
   } finally {

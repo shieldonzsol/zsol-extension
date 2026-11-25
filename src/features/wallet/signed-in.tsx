@@ -3,6 +3,10 @@ import { useEffect } from "react";
 import { tabOf, usePlace } from "@/app/places";
 import { PlaceTabs } from "@/components/place-tabs";
 import { GhostPayPlace } from "@/features/ghost/ghost-pay-place";
+import { ClaimPlace } from "@/features/links/claim-place";
+import { DarkLinkPlace } from "@/features/links/dark-link-place";
+import { forgetDarkLink } from "@/features/links/dark-link-store";
+import { forgetLinks } from "@/features/links/links-store";
 import { forgetGhostPay } from "@/features/ghost/ghost-pay-store";
 import { MovePlace } from "@/features/move/move-place";
 import { OverlayPlace } from "@/features/overlay/overlay-place";
@@ -46,6 +50,8 @@ export default function SignedIn({
       forgetMove();
       forgetTrade();
       forgetGhostPay();
+      forgetDarkLink();
+      forgetLinks();
       forgetPublicMoney();
     };
   }, [seed, site]);
@@ -59,6 +65,10 @@ export default function SignedIn({
           <PayManyPlace site={site} signInWallet={signInWallet} />
         ) : place === "overlay" ? (
           <OverlayPlace />
+        ) : place === "dark-link" ? (
+          <DarkLinkPlace site={site} signInWallet={signInWallet} />
+        ) : place === "claim" ? (
+          <ClaimPlace site={site} />
         ) : place === "ghost-pay" ? (
           <GhostPayPlace site={site} signInWallet={signInWallet} />
         ) : place === "trade" ? (

@@ -2,6 +2,7 @@
 // what is true; one that may have moved money never invites a blind retry.
 import { buildStopOf, type BuildStop } from "@/features/rings/build-errors";
 import { mostWithFee } from "@/features/rings/amount-input";
+import { SiteError } from "@/features/rings/site-api";
 
 import {
   landedOf,
@@ -30,6 +31,8 @@ export type FailureKind =
   | "left"
   /** zSol no longer serves this version of the panel. */
   | "update"
+  /** Another device made a Dark link with the same number first. */
+  | "link-taken"
   | Exclude<BuildStop, "build">
   | "failed";
 
@@ -68,6 +71,7 @@ const BY_CODE: Readonly<Record<string, FailureKind>> = {
   busy: "busy",
   "failed-on-chain": "failed-on-chain",
   update: "update",
+  "link-taken": "link-taken",
 };
 
 const isNetworkError = (error: unknown) =>
@@ -91,6 +95,9 @@ export function failureOf(error: unknown, online: boolean): FailureFacts {
     };
   }
   if (!online) return { kind: "offline", maybeMoved: false };
+  if (error instanceof SiteError) {
+    return { kind: error.failure === "refused" ? "failed" : error.failure, maybeMoved: false };
+  }
   if (error instanceof SponsorRefused) {
     const kind = error.budget ? "budget" : (BY_CODE[error.code] ?? "failed");
     const wait = error.retryAfterSeconds;

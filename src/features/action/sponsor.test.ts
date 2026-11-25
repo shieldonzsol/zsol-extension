@@ -17,8 +17,10 @@ describe("zSol's fee terms as the panel reads them", () => {
       ...base,
       sendFeeBps: 10,
       sendFeeMinimums: { [SOL]: "30000", [USDC]: "5000" },
+      fundingFeeAhead: { [SOL]: "30000", [USDC]: "5000" },
       tradeFeeMinimum: "40000",
     });
+    expect(setup.fundingFeeAhead.get(SOL)).toBe(30_000n);
     expect(setup.sendFeeBps).toBe(10n);
     expect(setup.tradeFeeMinimum).toBe(40_000n);
     expect(setup.sendFeeMinimums.get(SOL)).toBe(30_000n);
@@ -30,6 +32,7 @@ describe("zSol's fee terms as the panel reads them", () => {
     const setup = readSetup(200, base);
     expect(setup.sendFeeBps).toBe(10n);
     expect(setup.sendFeeMinimums.size).toBe(0);
+    expect(setup.fundingFeeAhead.size).toBe(0);
     expect(setup.tradeFeeMinimum).toBe(30_000n);
   });
 
@@ -39,6 +42,9 @@ describe("zSol's fee terms as the panel reads them", () => {
       SetupUnread,
     );
     expect(() => readSetup(200, { ...base, sendFeeMinimums: { [USDC]: "-5" } })).toThrow(
+      SetupUnread,
+    );
+    expect(() => readSetup(200, { ...base, fundingFeeAhead: { [SOL]: "1000001" } })).toThrow(
       SetupUnread,
     );
     expect(() => readSetup(200, { ...base, tradeFeeMinimum: "1000001" })).toThrow(SetupUnread);

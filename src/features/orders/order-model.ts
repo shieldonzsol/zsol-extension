@@ -3,7 +3,16 @@
 // nothing here touches storage, the network or React. Every function returns a new order.
 
 export type OrderKind =
-  "send-dark" | "pay-many" | "unshield" | "move" | "trade" | "ghost-swap" | "ghost-pay";
+  | "send-dark"
+  | "pay-many"
+  | "unshield"
+  | "move"
+  | "trade"
+  | "ghost-swap"
+  | "ghost-pay"
+  | "dark-link"
+  | "link-back"
+  | "link-claim";
 
 export type StepState = "waiting" | "active" | "done" | "failed";
 
@@ -52,6 +61,8 @@ export interface Order {
   readonly runner?: string;
   /** The private wallet's own signature on it: found on chain even if the panel closed. */
   readonly signed?: string;
+  /** Who signs it when not the private wallet: a Dark link's own address, on its claim. */
+  readonly signer?: string;
   /** When it was signed: past the blockhash's life it can no longer land. */
   readonly signedAt?: number;
   /** Its transaction, once zSol sent it. */
@@ -80,6 +91,7 @@ export function openOrder(input: {
   readonly facts: OrderFacts;
   readonly steps: readonly string[];
   readonly runner: string;
+  readonly signer?: string;
 }): Order {
   return {
     id: input.id,
@@ -89,6 +101,7 @@ export function openOrder(input: {
     state: "running",
     runner: input.runner,
     steps: input.steps.map((key): OrderStep => ({ key, state: "waiting" })),
+    ...(input.signer === undefined ? {} : { signer: input.signer }),
   };
 }
 

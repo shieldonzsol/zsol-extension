@@ -68,6 +68,10 @@ export const FAILURE_WORDS: Record<FailureKind, { readonly title: string; readon
       title: "This version of zSol for Chrome is too old for zSol now. Nothing moved.",
       body: "Update it to go on: your wallet and orders stay as they are.",
     },
+    "link-taken": {
+      title: "Another device made a Dark link at the same moment. Nothing moved.",
+      body: "Review it again: it takes the next free link.",
+    },
     left: {
       title: "It left your private balance and stopped at your zSol address.",
       body: "It waits there, in public. Move it back to private from your wallet, then try again.",

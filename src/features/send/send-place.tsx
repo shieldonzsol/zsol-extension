@@ -7,11 +7,11 @@ import {
   AmountField,
   Card,
   Done,
-  ExternalLink,
   Failed,
   Heading,
   NotOpenYet,
   Paused,
+  PlaceLink,
   PrepareFailure,
   ProblemLine,
   PublicAndHidden,
@@ -86,7 +86,7 @@ function Stage({
   readonly site: string;
   readonly signInWallet: string;
 }) {
-  if (send.kind === "form") return <SendForm send={send} site={site} signInWallet={signInWallet} />;
+  if (send.kind === "form") return <SendForm send={send} signInWallet={signInWallet} />;
   if (send.kind === "review")
     return <ReviewCard review={send.review} signInWallet={signInWallet} />;
   if (send.kind === "sending") return <Sending order={send.order} site={site} />;
@@ -142,11 +142,9 @@ function Stage({
 
 function SendForm({
   send,
-  site,
   signInWallet,
 }: {
   readonly send: Extract<SendState, { kind: "form" }>;
-  readonly site: string;
   readonly signInWallet: string;
 }) {
   const draft = useDraft();
@@ -187,7 +185,7 @@ function SendForm({
           invalid={toProblem !== null}
           note={
             toProblem ? (
-              <ToProblem problem={toProblem} site={site} />
+              <ToProblem problem={toProblem} />
             ) : (
               <ReceiverHints value={draft.to} kind="zsol" onPick={(to) => setDraft({ to })} />
             )
@@ -233,7 +231,7 @@ function SendForm({
   );
 }
 
-function ToProblem({ problem, site }: { readonly problem: FormProblem; readonly site: string }) {
+function ToProblem({ problem }: { readonly problem: FormProblem }) {
   switch (problem.kind) {
     case "to-empty":
       return <ProblemLine text="Add the zSol address you're paying." />;
@@ -265,9 +263,7 @@ function ToProblem({ problem, site }: { readonly problem: FormProblem; readonly 
         <ProblemLine
           text="This address has no private wallet yet, so it can't be paid privately."
           next="A Dark link reaches anyone: they claim it into a private wallet of their own."
-          action={
-            <ExternalLink href={`${site}/send#dark-link`}>Send a Dark link on zsol.cc</ExternalLink>
-          }
+          action={<PlaceLink place="dark-link">Send a Dark link instead</PlaceLink>}
         />
       );
     default:

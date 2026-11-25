@@ -25,6 +25,8 @@ import { AMOUNT_WORDS } from "@/features/action/words";
 import { plainAmount } from "@/features/rings/amount-input";
 import { formatAmount } from "@/features/rings/amounts";
 import { SOL } from "@/features/rings/holdings";
+import { CopyLine } from "@/features/links/copy-line";
+import { LINK_DATE } from "@/features/links/link-words";
 import { SendWays } from "@/features/send/send-ways";
 import { LookalikeLine, ReceiverHints } from "@/features/receivers/receiver-hints";
 import { notifyWhenPaid } from "@/features/payouts/payouts";
@@ -145,6 +147,9 @@ function Stage({
           again="Ghost pay again"
           onAgain={another}
         />
+        {done.link === null ? null : (
+          <LinkReady link={done.link} at={lastPartAt(done.parts, state.review.builtAt)} />
+        )}
         <Schedule parts={done.parts} from={state.review.builtAt} />
         <NotifyButton plan={done.planId} />
       </div>
@@ -168,6 +173,25 @@ function Stage({
       changeLabel="Change the payment"
       words={GHOST_PAY_FAILURE_WORDS}
     />
+  );
+}
+
+/** When the last part of a plan placed at `from` is due. */
+const lastPartAt = (parts: readonly PlannedPart[], from: number) =>
+  from + parts.reduce((last, part) => Math.max(last, part.afterMs), 0);
+
+/** The Dark link this payout funds, to share from when its money lands. */
+function LinkReady({ link, at }: { readonly link: string; readonly at: number }) {
+  return (
+    <Card>
+      <span className="text-label font-medium text-muted-foreground">Your Dark link</span>
+      <CopyLine value={link} label="Copy the link" />
+      <p className="text-label text-pretty text-muted-foreground">
+        Its money arrives about {LINK_DATE.format(at)}. Share it from then: whoever opens it moves
+        the money into their private balance. Until it's opened, you can take it back from your
+        links.
+      </p>
+    </Card>
   );
 }
 
@@ -236,13 +260,23 @@ function PayForm({
           label="To"
           placeholder="Their Solana address"
           value={draft.to}
-          onChange={(to) => setDraft({ to, ghost: null })}
+          onChange={(to) => setDraft({ to, ghost: null, link: null })}
           invalid={toProblem !== null}
           note={
             toProblem ? (
               <Problem problem={toProblem} />
+            ) : draft.link !== null ? (
+              <span className="text-muted-foreground">
+                Your new Dark link's one-time address. Ghost Route pays it, so nothing on chain ties
+                the link to you; the amount is public. The link shows here once its payout is
+                placed.
+              </span>
             ) : draft.ghost === null ? (
-              <ReceiverHints value={draft.to} kind="public" onPick={(to) => setDraft({ to })} />
+              <ReceiverHints
+                value={draft.to}
+                kind="public"
+                onPick={(to) => setDraft({ to, link: null })}
+              />
             ) : (
               <span className="text-muted-foreground">
                 Ghost {String(draft.ghost + 1)}: one of your ghost wallets. Fund it ahead of time:

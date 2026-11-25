@@ -54,6 +54,8 @@ export interface GhostPayDraft {
   readonly shield: boolean;
   /** It funds one of this wallet's own ghost wallets: its number, from 0. */
   readonly ghost: number | null;
+  /** It funds a new Dark link of the trader's own: the link, shown once its payout is placed. */
+  readonly link: string | null;
 }
 
 export type GhostPayProblem =
@@ -88,6 +90,8 @@ export interface GhostPayFacts {
   readonly planId: string;
   /** It funds one of this wallet's own ghost wallets: its number. */
   readonly ghost: number | null;
+  /** It funds a new Dark link of the trader's own: the link to share. */
+  readonly link: string | null;
 }
 
 export type Review = Built<GhostPayFacts>;
@@ -120,8 +124,8 @@ let asks = 0;
 
 const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
   kind: "ghost-pay",
-  empty: () => ({ to: "", amountText: "", plan: null, shield: true, ghost: null }),
-  another: (draft) => ({ ...draft, to: "", amountText: "", ghost: null }),
+  empty: () => ({ to: "", amountText: "", plan: null, shield: true, ghost: null, link: null }),
+  another: (draft) => ({ ...draft, to: "", amountText: "", ghost: null, link: null }),
   check: (draft, { own }) => draftProblem(draft, own),
   // Each review shuffles its parts afresh, and its plan gets a name of its own.
   keyOf: () => String((asks += 1)),
@@ -185,6 +189,7 @@ const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
         shielded,
         planId: crypto.randomUUID(),
         ghost: draft.ghost,
+        link: draft.link,
       },
     };
   },
@@ -245,8 +250,8 @@ const ghostPay = createAction<GhostPayDraft, GhostPayProblem, GhostPayFacts>({
   },
   afterDone: (review) => {
     void readAgain();
-    // A ghost wallet of one's own isn't someone paid.
-    if (review.ghost === null) {
+    // A ghost wallet or a link of one's own isn't someone paid.
+    if (review.ghost === null && review.link === null) {
       void rememberReceiver(review.to, review.shielded ? "zsol" : "public");
     }
   },
@@ -275,7 +280,17 @@ export function fundGhost(index: number, to: string): void {
   // A payment on its way keeps its screen; any other starts afresh for this ghost wallet.
   if (now !== "sending") {
     if (now !== "form") ghostPay.another();
-    setDraft({ to, ghost: index, amountText: "" });
+    setDraft({ to, ghost: index, link: null, amountText: "" });
+  }
+  window.location.hash = "#/ghost-pay";
+}
+
+/** Opens Ghost pay to fund a new Dark link of the trader's own, already listed: its address. */
+export function fundLink(to: string, link: string): void {
+  const now = ghostPay.peek().kind;
+  if (now !== "sending") {
+    if (now !== "form") ghostPay.another();
+    setDraft({ to, ghost: null, link, amountText: "" });
   }
   window.location.hash = "#/ghost-pay";
 }

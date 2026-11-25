@@ -75,10 +75,12 @@ function isOrder(value: unknown): value is Order {
   const id: unknown = Reflect.get(value, "id");
   const steps: unknown = Reflect.get(value, "steps");
   const state: unknown = Reflect.get(value, "state");
+  const signer: unknown = Reflect.get(value, "signer");
   return (
     typeof id === "string" &&
     Array.isArray(steps) &&
-    (state === "running" || state === "done" || state === "stopped" || state === "unsure")
+    (state === "running" || state === "done" || state === "stopped" || state === "unsure") &&
+    (signer === undefined || typeof signer === "string")
   );
 }
 
@@ -196,6 +198,8 @@ export function startOrder(
   kind: OrderKind,
   facts: OrderFacts,
   steps: readonly string[],
+  /** Who signs it, when not the private wallet. */
+  signer?: string,
 ): OrderHandle {
   const order = openOrder({
     id: orderIdOf(randomBytes(5)),
@@ -204,6 +208,7 @@ export function startOrder(
     facts,
     steps,
     runner: RUNNER,
+    ...(signer === undefined ? {} : { signer }),
   });
   publish([order, ...orders]);
   void keep(order).catch(() => undefined);
@@ -238,12 +243,15 @@ async function statusOf(client: SprClient, sent: string): Promise<ChainVerdict> 
   return status.confirmationStatus === "processed" ? "unseen" : "landed";
 }
 
-/** The transaction that carries the private wallet's signature, among its own recent ones. */
+/** The transaction that carries its signer's signature, among the signer's own recent ones. */
 async function findSent(client: SprClient, owner: string, order: Order): Promise<string | null> {
   if (!order.signed || order.signedAt === undefined) return null;
   const since = Math.floor(order.signedAt / 1000) - 60;
   const recent = await client.solanaRpc
-    .getSignaturesForAddress(address(owner), { limit: 25, commitment: "confirmed" })
+    .getSignaturesForAddress(address(order.signer ?? owner), {
+      limit: 25,
+      commitment: "confirmed",
+    })
     .send();
   for (const entry of recent) {
     if (entry.blockTime !== null && Number(entry.blockTime) < since) break;

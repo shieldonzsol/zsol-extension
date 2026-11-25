@@ -43,7 +43,7 @@ export async function warmTerms(site: string): Promise<void> {
 /** zSol's fee terms: which tokens pay it, at what rate, and its least fee. */
 export type FeeTerms = Pick<
   SponsorSetup,
-  "feeAssets" | "sendFeeBps" | "sendFeeMinimums" | "tradeFeeMinimum"
+  "feeAssets" | "sendFeeBps" | "sendFeeMinimums" | "fundingFeeAhead" | "tradeFeeMinimum"
 >;
 
 // What a form shows until zSol's own terms are read.
@@ -51,6 +51,7 @@ const ASSUMED: FeeTerms = {
   feeAssets: new Set(WALLET_ASSETS.map((each) => each.mint)),
   sendFeeBps: DEFAULT_SEND_FEE_BPS,
   sendFeeMinimums: new Map(),
+  fundingFeeAhead: new Map(),
   tradeFeeMinimum: DEFAULT_TRADE_FEE_MINIMUM,
 };
 
@@ -63,6 +64,19 @@ export function feeOn(mint: string, amount: bigint, terms: SendTerms = currentTe
   return terms.feeAssets.has(mint)
     ? feeAt(amount, terms.sendFeeBps, terms.sendFeeMinimums.get(mint) ?? 0n)
     : 0n;
+}
+
+/**
+ * zSol's fee on paying `amount` of `mint` into a Dark link: a send's fee, and the claim's network
+ * fee paid ahead, on the tokens zSol charges at all.
+ */
+export function fundingFeeOn(
+  mint: string,
+  amount: bigint,
+  terms: SendTerms & Pick<FeeTerms, "fundingFeeAhead"> = currentTerms(),
+): bigint {
+  const fee = feeOn(mint, amount, terms);
+  return fee > 0n ? fee + (terms.fundingFeeAhead.get(mint) ?? 0n) : 0n;
 }
 
 /** zSol's least fee on `mint`, zero when it states none or charges nothing on it. */

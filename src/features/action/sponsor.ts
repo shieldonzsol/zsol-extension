@@ -2,6 +2,7 @@
 // fee wallet checks with worked out here, then zSol checks every output to someone else,
 // screens every address, pays the network fee, sends and waits. The private wallet then reads
 // it back. A lost answer or a send not seen landing is never read as "nothing moved".
+import type { ShieldedAddress } from "@heliuslabs/spr";
 import {
   getBase58Decoder,
   getBase64Decoder,
@@ -74,6 +75,12 @@ export async function submitSponsored(input: {
   readonly spender: Spender;
   readonly transaction: Transaction;
   readonly kind?: SponsorKind;
+  /** Receivers whose keys are in hand: a Dark link's one-time wallet, or the claimer's own. */
+  readonly known?: readonly ShieldedAddress[];
+  /** It pays a Dark link: zSol's fee also paid ahead for the link's claim, which is then free. */
+  readonly funds?: boolean;
+  /** A Dark link's claim: the link opens to zSol the fee-paid money it holds. */
+  readonly claims?: boolean;
   readonly onStep: (step: SendStep) => void;
   /** The private wallet signed it: its own signature, before anything is sent. */
   readonly onSigned?: (signature: string) => void;
@@ -89,7 +96,7 @@ export async function submitSponsored(input: {
   );
   const own = signed.signatures[input.spender.keypair.shieldedAddress().solanaAddress()];
   if (own) input.onSigned?.(getBase58Decoder().decode(own));
-  const body = await bodyOf(input.kind ?? "private", input.client, input.spender, signed);
+  const body = await bodyOf(input.kind ?? "private", input, signed);
   input.onStep("sending");
   const auth = await authHeaders();
   if (!auth) throw new SponsorRefused("signed-out");
@@ -127,13 +134,15 @@ export async function submitSponsored(input: {
 
 async function bodyOf(
   kind: SponsorKind,
-  client: SprClient,
-  spender: Spender,
+  input: Pick<
+    Parameters<typeof submitSponsored>[0],
+    "client" | "spender" | "known" | "funds" | "claims"
+  >,
   signed: Transaction,
 ): Promise<string> {
   const transaction = getBase64EncodedWireTransaction(signed);
   if (kind !== "private") return JSON.stringify({ kind, transaction });
-  const keys = await sponsorKeys(client, spender, signed);
+  const keys = await sponsorKeys(input.client, input.spender, signed, input.known);
   try {
     return JSON.stringify({
       transaction,
@@ -143,10 +152,29 @@ async function bodyOf(
         asset: receiver.asset,
         nullifierPublicKey: base64(receiver.nullifierPublicKey),
       })),
+      // zSol records only fee-paid outputs to someone other than its treasury.
+      ...(input.funds ? { fundings: keys.receivers.map((receiver) => receiver.slot) } : {}),
+      ...(input.claims ? { paid: paidOpenings(input.spender) } : {}),
     });
   } finally {
     keys.txViewingKey.fill(0);
   }
+}
+
+/** Everything a Dark link holds, opened, for its free claim: zSol finds each was paid for. */
+function paidOpenings(link: Spender) {
+  const owner = link.keypair.shieldedAddress().solanaAddress();
+  const nullifierPublicKey = base64(link.keypair.nullifierPublicKey());
+  return link.wallet
+    .utxos()
+    .filter((item) => !item.spent)
+    .map((item) => ({
+      owner,
+      asset: item.utxo.asset,
+      amount: item.utxo.amount.toString(),
+      blinding: base64(item.utxo.blinding),
+      nullifierPublicKey,
+    }));
 }
 
 export type Landed = "landed" | "unsynced" | "failed" | "pending";

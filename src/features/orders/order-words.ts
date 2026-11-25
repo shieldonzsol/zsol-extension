@@ -8,6 +8,9 @@ export const KIND_WORDS: Record<OrderKind, string> = {
   trade: "Trade",
   "ghost-swap": "Ghost swap",
   "ghost-pay": "Ghost pay",
+  "dark-link": "Dark link",
+  "link-back": "Dark link taken back",
+  "link-claim": "Dark link claimed",
 };
 
 export const STEP_WORDS: Readonly<
@@ -18,6 +21,7 @@ export const STEP_WORDS: Readonly<
   send: { active: "zSol checks it and sends it", done: "Checked and sent by zSol" },
   land: { active: "Waiting for it to land", done: "Landed on Solana" },
   read: { active: "Reading your balance", done: "Balance read" },
+  claim: { active: "Moving it into your private balance", done: "In your private balance" },
 };
 
 export const STATE_WORDS: Record<OrderState, string> = {

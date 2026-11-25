@@ -31,6 +31,7 @@ import {
   privateKeypair,
   type GhostWallet,
 } from "@/features/rings/keys";
+import { darkLinkSeed } from "@/features/rings/links";
 import { SiteError, type SiteFailure } from "@/features/rings/site-api";
 import { snapshotStore, type SnapshotStore } from "@/features/rings/snapshot-store";
 
@@ -291,6 +292,11 @@ export const ADDRESS_LOCK = "zsol-address";
 /** A ghost wallet's keys, made from the open wallet's seed when a swap needs them. */
 export function ghostKeys(index: number): Promise<GhostWallet> | null {
   return opened ? ghostWallet(opened.seed, index) : null;
+}
+
+/** The key of the open wallet's Dark link number `index`, made when a link needs it. */
+export function linkKey(index: number): Promise<Uint8Array> | null {
+  return opened ? darkLinkSeed(opened.seed, index) : null;
 }
 
 /** What a send spends with: the open wallet, its keys and its client. Null until it opens. */

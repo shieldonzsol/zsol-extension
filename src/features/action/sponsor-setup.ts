@@ -15,6 +15,11 @@ export interface SponsorSetup {
   readonly sendFeeBps: bigint;
   /** The least a send's fee is, by token, in its smallest unit. */
   readonly sendFeeMinimums: ReadonlyMap<string, bigint>;
+  /**
+   * Paying a Dark link adds this to zSol's fee, by token: the later claim's network fee, paid
+   * ahead, so claiming the link costs nothing.
+   */
+  readonly fundingFeeAhead: ReadonlyMap<string, bigint>;
   /** The least zSol's fee is on a trade from the private balance, in lamports. */
   readonly tradeFeeMinimum: bigint;
   /** Null when private actions can run now; otherwise why they can't. */
@@ -50,6 +55,23 @@ function addressIn(body: unknown, name: string): Address {
   return address(value);
 }
 
+/** Amounts zSol states by token, each at most the least fee this panel accepts on it. */
+function perToken(body: unknown, name: string): Map<string, bigint> {
+  const amounts = new Map<string, bigint>();
+  const stated = field(body, name);
+  for (const [mint, value] of Object.entries(
+    typeof stated === "object" && stated !== null ? stated : {},
+  )) {
+    const most = MAX_SEND_FEE_MINIMUMS[mint];
+    if (most === undefined) continue;
+    if (typeof value !== "string" || !/^\d{1,20}$/.test(value) || BigInt(value) > most) {
+      throw new SetupUnread(name);
+    }
+    amounts.set(mint, BigInt(value));
+  }
+  return amounts;
+}
+
 /** What zSol answered for its fee wallet's setup, read and checked. */
 export function readSetup(status: number, body: unknown): SponsorSetup {
   if (status === 503 && field(body, "error") === "unavailable") {
@@ -59,6 +81,7 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
       feeAssets: new Set(),
       sendFeeBps: DEFAULT_SEND_FEE_BPS,
       sendFeeMinimums: new Map(),
+      fundingFeeAhead: new Map(),
       tradeFeeMinimum: DEFAULT_TRADE_FEE_MINIMUM,
       paused: "off",
     };
@@ -71,18 +94,8 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
   if (typeof bps === "number" && (!Number.isInteger(bps) || bps < 0 || bps > MAX_SEND_FEE_BPS)) {
     throw new SetupUnread("sendFeeBps");
   }
-  const minimums = new Map<string, bigint>();
-  const stated = field(body, "sendFeeMinimums");
-  for (const [mint, value] of Object.entries(
-    typeof stated === "object" && stated !== null ? stated : {},
-  )) {
-    const most = MAX_SEND_FEE_MINIMUMS[mint];
-    if (most === undefined) continue;
-    if (typeof value !== "string" || !/^\d{1,20}$/.test(value) || BigInt(value) > most) {
-      throw new SetupUnread("sendFeeMinimums");
-    }
-    minimums.set(mint, BigInt(value));
-  }
+  const minimums = perToken(body, "sendFeeMinimums");
+  const ahead = perToken(body, "fundingFeeAhead");
   const tradeLeast = field(body, "tradeFeeMinimum");
   if (
     tradeLeast !== undefined &&
@@ -100,6 +113,7 @@ export function readSetup(status: number, body: unknown): SponsorSetup {
     ),
     sendFeeBps: typeof bps === "number" ? BigInt(bps) : DEFAULT_SEND_FEE_BPS,
     sendFeeMinimums: minimums,
+    fundingFeeAhead: ahead,
     tradeFeeMinimum:
       typeof tradeLeast === "string" ? BigInt(tradeLeast) : DEFAULT_TRADE_FEE_MINIMUM,
     paused:

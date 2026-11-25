@@ -22,6 +22,8 @@ const UNDER = {
   move: "wallet",
   "pay-many": "send",
   "ghost-pay": "send",
+  "dark-link": "send",
+  claim: "wallet",
   overlay: "trade",
 } as const satisfies Record<string, TabId>;
 
