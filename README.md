@@ -113,6 +113,7 @@ sequenceDiagram
 | `activeTab`                                         | Reads the address of the tab you open zSol from, to offer the token on that page. That tab only, while you stay on it |
 | `scripting`                                         | Adds the overlay's chip to a trading site, once you turn it on there                                                  |
 | A trading site, asked one at a time                 | Only when you turn the overlay on for it; given back when you turn it off                                             |
+| `notifications`, asked when you want them           | Tells you when a Ghost Route payout lands, or stops                                                                   |
 | `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect                                                            |
 
 None of these shows a warning when you install.

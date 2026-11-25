@@ -9,10 +9,12 @@ import {
   readActive,
   readBusy,
   readLockAfter,
+  readPaired,
   readPendingLock,
 } from "@/features/lock/vault";
 import { listenForChips } from "@/features/overlay/background";
 import { syncSites } from "@/features/overlay/registration";
+import { checkPayouts, PAYOUT_ALARM } from "@/features/payouts/payouts";
 
 const LOCK_CHECK = "lock-check";
 
@@ -44,6 +46,9 @@ export default defineBackground(() => {
   void browser.alarms.create(LOCK_CHECK, { periodInMinutes: 1 });
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === LOCK_CHECK) void checkLock();
+    if (alarm.name === PAYOUT_ALARM) {
+      void readPaired().then((paired) => (paired ? checkPayouts(paired.site) : undefined));
+    }
   });
   browser.idle.onStateChanged.addListener((state) => {
     if (state === "locked") void lockSoon("screen");

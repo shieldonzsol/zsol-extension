@@ -27,6 +27,7 @@ import { formatAmount } from "@/features/rings/amounts";
 import { SOL } from "@/features/rings/holdings";
 import { SendWays } from "@/features/send/send-ways";
 import { LookalikeLine, ReceiverHints } from "@/features/receivers/receiver-hints";
+import { notifyWhenPaid } from "@/features/payouts/payouts";
 import { useWallet } from "@/features/wallet/wallet-store";
 import { cn } from "@/lib/utils";
 
@@ -145,6 +146,7 @@ function Stage({
           onAgain={another}
         />
         <Schedule parts={done.parts} from={state.review.builtAt} />
+        <NotifyButton plan={done.planId} />
       </div>
     );
   }
@@ -166,6 +168,38 @@ function Stage({
       changeLabel="Change the payment"
       words={GHOST_PAY_FAILURE_WORDS}
     />
+  );
+}
+
+function NotifyButton({ plan }: { readonly plan: string }) {
+  const [asked, setAsked] = useState<"watching" | "refused" | null>(null);
+  if (asked === "watching") {
+    return (
+      <p className="px-1 text-label text-muted-foreground">
+        zSol tells you as each part lands, with this panel closed too.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={() =>
+          void notifyWhenPaid(plan).then(
+            (granted) => setAsked(granted ? "watching" : "refused"),
+            () => setAsked("refused"),
+          )
+        }
+        className={buttonVariants({ variant: "outline", size: "lg", className: "h-10 w-full" })}
+      >
+        Tell me when it lands
+      </button>
+      {asked === "refused" ? (
+        <p className="px-1 text-label text-muted-foreground">
+          Chrome wasn't allowed to show zSol's notifications. Orders still shows each part.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

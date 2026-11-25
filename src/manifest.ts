@@ -34,6 +34,8 @@ export function manifestFor(mode: string) {
     permissions: ["sidePanel", "storage", "alarms", "idle", "activeTab", "scripting"],
     // Asked one site at a time, when the trader turns the overlay on there; never at install.
     optional_host_permissions: [...OVERLAY_PATTERNS],
+    // Asked when the trader wants to hear that a Ghost Route payout landed.
+    optional_permissions: ["notifications"],
     action: { default_title: "Open zSol" },
     externally_connectable: { matches: originsFor(mode).map(matchFor) },
     // The private wallet's hasher is WebAssembly shipped in the package.

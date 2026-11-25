@@ -29,6 +29,10 @@ describe("manifest", () => {
     ]);
   });
 
+  it("asks to notify only when the trader wants to hear about a payout", () => {
+    expect(manifest.optional_permissions).toEqual(["notifications"]);
+  });
+
   it("reaches no website at install and runs inside none", () => {
     expect(manifest).not.toHaveProperty("host_permissions");
     expect(manifest).not.toHaveProperty("content_scripts");

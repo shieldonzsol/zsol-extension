@@ -32,6 +32,9 @@ const overlaySites = [
   "https://dexscreener.com/*",
   "https://birdeye.so/*",
 ];
+if ((manifest.optional_permissions ?? []).join() !== "notifications") {
+  problems.push(`optional_permissions: ${JSON.stringify(manifest.optional_permissions)}`);
+}
 if ((manifest.optional_host_permissions ?? []).join() !== overlaySites.join()) {
   problems.push(
     `optional_host_permissions differ from the overlay's sites: ${JSON.stringify(manifest.optional_host_permissions)}`,
