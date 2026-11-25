@@ -1,7 +1,8 @@
 // Move to private: what the zSol address holds in public, deposited into the private balance, so
 // the address ends empty. An unregistered wallet registers itself first from that money. The
 // address pays its own network fee, or hands back the one zSol's fee wallet fronts. A token the
-// private pool can't take stays, and the rest still moves.
+// private pool can't take stays, and the rest still moves; what one transaction can't hold waits
+// for the next move.
 import { buildDepositTransaction, SOL_MINT, type ShieldedKeypair } from "@heliuslabs/spr";
 import { getSplAssetRegistryAddress } from "@heliuslabs/spr/addresses";
 import type { SprClient } from "@heliuslabs/spr/client";
@@ -14,12 +15,19 @@ import {
   createNoopSigner,
   createTransactionMessage,
   decompileTransactionMessage,
+  getAddressDecoder,
   getBase64EncodedWireTransaction,
+  getBase64Encoder,
   getCompiledTransactionMessageDecoder,
+  isSolanaError,
+  isTransactionWithinSizeLimit,
   pipe,
   setTransactionMessageConfig,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
+  SOLANA_ERROR__TRANSACTION__EXCEEDS_SIZE_LIMIT,
+  SOLANA_ERROR__TRANSACTION__TOO_MANY_ACCOUNT_ADDRESSES,
+  SOLANA_ERROR__TRANSACTION__TOO_MANY_INSTRUCTIONS,
   type Address,
   type Instruction,
   type Transaction,
@@ -31,12 +39,18 @@ import { networkFeeOf, SIGNATURE_FEE } from "./network-fee";
 
 const TOKEN_2022 = address("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 const WRAPPED_SOL = address("So11111111111111111111111111111111111111112");
+const WRAPPED_SOL_2022 = address("9pan9bMn5HatX4EJdBwg9VgCa7Uz5HL8N1m5D3NdXejP");
 /** A registry record's size: its rent is read for it. */
 export const REGISTRY_RECORD_SPACE = 100n;
 /** As zsol.cc sends it: within zSol's fee wallet's cap of 10,000. */
 const PRIORITY_FEE = 10_000n;
-const SWEEP_COMPUTE_UNITS = 600_000;
 const LOADED_ACCOUNTS_DATA_SIZE_LIMIT = 64 * 1024 * 1024;
+/** Solana's most compute units for one transaction. */
+export const MAX_COMPUTE_UNITS = 1_400_000;
+/** Solana's most accounts one transaction may name. */
+const MAX_ACCOUNTS = 64;
+/** The most accounts the chain reads in one call. */
+const ACCOUNTS_PER_CALL = 100;
 
 export interface PublicToken {
   readonly mint: Address;
@@ -47,7 +61,7 @@ export interface PublicToken {
   /** The account's own lamports, back to the address when it is closed. */
   readonly rent: bigint;
   readonly frozen: boolean;
-  /** Wrapped SOL: closing the account unwraps it, and it moves with the SOL. */
+  /** Wrapped SOL, under either token program: closing the account unwraps it. */
   readonly wrapped: boolean;
 }
 
@@ -61,7 +75,14 @@ export interface PublicMoney {
 }
 
 /** Why a token stays at the address. */
-export type StayReason = "new-to-rings" | "frozen" | "fails";
+export type StayReason =
+  /** The private pool never held it: a first deposit must make its account there. */
+  | "new-to-rings"
+  | "frozen"
+  /** Its deposit, or unwrapping it, fails in simulation. */
+  | "fails"
+  /** One transaction holds no more: the next move takes it. */
+  | "later";
 
 export interface StayingToken {
   readonly token: PublicToken;
@@ -72,9 +93,13 @@ function field(value: unknown, name: string): unknown {
   return typeof value === "object" && value !== null ? Reflect.get(value, name) : undefined;
 }
 
+const isWrappedSol = (mint: Address, program: Address) =>
+  (mint === WRAPPED_SOL && program === TOKEN_PROGRAM_ADDRESS) ||
+  (mint === WRAPPED_SOL_2022 && program === TOKEN_2022);
+
 function parsedTokenOf(
   data: unknown,
-): { mint: string; amount: string; decimals: number; frozen: boolean } | null {
+): { mint: string; amount: bigint; decimals: number; frozen: boolean } | null {
   const info = field(field(data, "parsed"), "info");
   const mint = field(info, "mint");
   const tokenAmount = field(info, "tokenAmount");
@@ -84,7 +109,60 @@ function parsedTokenOf(
     return null;
   }
   if (!/^\d{1,20}$/.test(amount)) return null;
-  return { mint, amount, decimals, frozen: field(info, "state") === "frozen" };
+  return { mint, amount: BigInt(amount), decimals, frozen: field(info, "state") === "frozen" };
+}
+
+/** Both token programs lay an account out alike: mint, owner, amount, and its state at 108. */
+const TOKEN_ACCOUNT_BYTES = 165;
+const STATE_AT = 108;
+const INITIALIZED = 1;
+const FROZEN = 2;
+/** A mint's decimals sit at 44 under both programs. */
+const DECIMALS_AT = 44;
+
+const base64Of = (data: unknown): Uint8Array | null =>
+  Array.isArray(data) && data[1] === "base64" && typeof data[0] === "string"
+    ? new Uint8Array(getBase64Encoder().encode(data[0]))
+    : null;
+
+/** An account the node couldn't parse, an extension it doesn't know, read from its bytes. */
+export function rawTokenOf(
+  data: unknown,
+): { mint: Address; amount: bigint; frozen: boolean } | null {
+  const bytes = base64Of(data);
+  if (!bytes || bytes.length < TOKEN_ACCOUNT_BYTES) return null;
+  const state = bytes[STATE_AT];
+  if (state !== INITIALIZED && state !== FROZEN) return null;
+  return {
+    mint: getAddressDecoder().decode(bytes.subarray(0, 32)),
+    amount: new DataView(bytes.buffer, bytes.byteOffset + 64, 8).getBigUint64(0, true),
+    frozen: state === FROZEN,
+  };
+}
+
+/** Reads `accounts` a hundred a call, in the order asked; null where there is none. */
+async function readAccounts(
+  client: Pick<SprClient, "solanaRpc">,
+  accounts: readonly Address[],
+  slice: { readonly offset: number; readonly length: number },
+): Promise<(Uint8Array | null)[]> {
+  const calls: Address[][] = [];
+  for (let at = 0; at < accounts.length; at += ACCOUNTS_PER_CALL) {
+    calls.push(accounts.slice(at, at + ACCOUNTS_PER_CALL));
+  }
+  const read = await Promise.all(
+    calls.map(async (asked) => {
+      const { value } = await client.solanaRpc
+        .getMultipleAccounts(asked, {
+          encoding: "base64",
+          commitment: "confirmed",
+          dataSlice: slice,
+        })
+        .send();
+      return asked.map((_, at) => base64Of(value[at]?.data));
+    }),
+  );
+  return read.flat();
 }
 
 /** The address's token accounts under both token programs. */
@@ -97,29 +175,45 @@ async function tokensOf(client: SprClient, owner: Address): Promise<PublicToken[
         { encoding: "jsonParsed", commitment: "confirmed" },
       )
       .send();
-    return value.flatMap((entry): PublicToken[] => {
-      const parsed = parsedTokenOf(entry.account.data);
-      if (!parsed) return [];
-      const mint = address(parsed.mint);
-      return [
-        {
-          mint,
-          account: entry.pubkey,
-          program: programId,
-          amount: BigInt(parsed.amount),
-          decimals: parsed.decimals,
-          rent: BigInt(entry.account.lamports),
-          frozen: parsed.frozen,
-          wrapped: mint === WRAPPED_SOL && programId === TOKEN_PROGRAM_ADDRESS,
-        },
-      ];
-    });
+    return value.map((entry) => ({ entry, programId }));
   };
-  const [classic, extended] = await Promise.all([
-    byProgram(TOKEN_PROGRAM_ADDRESS),
-    byProgram(TOKEN_2022),
-  ]);
-  return [...classic, ...extended];
+  const entries = (
+    await Promise.all([byProgram(TOKEN_PROGRAM_ADDRESS), byProgram(TOKEN_2022)])
+  ).flat();
+  const unparsed = entries.flatMap(({ entry }) => {
+    if (parsedTokenOf(entry.account.data)) return [];
+    const read = rawTokenOf(entry.account.data);
+    return read ? [read.mint] : [];
+  });
+  const mints = [...new Set(unparsed)];
+  const decimalsOf = new Map<Address, number>();
+  if (mints.length > 0) {
+    const read = await readAccounts(client, mints, { offset: DECIMALS_AT, length: 1 });
+    mints.forEach((mint, at) => {
+      const byte = read[at]?.[0];
+      if (byte !== undefined) decimalsOf.set(mint, byte);
+    });
+  }
+  return entries.flatMap(({ entry, programId }): PublicToken[] => {
+    const parsed = parsedTokenOf(entry.account.data);
+    const raw = parsed ? null : rawTokenOf(entry.account.data);
+    const mint = parsed ? address(parsed.mint) : raw?.mint;
+    const decimals = parsed ? parsed.decimals : mint ? decimalsOf.get(mint) : undefined;
+    const read = parsed ?? raw;
+    if (!read || !mint || decimals === undefined) return [];
+    return [
+      {
+        mint,
+        account: entry.pubkey,
+        program: programId,
+        amount: read.amount,
+        decimals,
+        rent: BigInt(entry.account.lamports),
+        frozen: read.frozen,
+        wrapped: isWrappedSol(mint, programId),
+      },
+    ];
+  });
 }
 
 export async function publicMoneyOf(client: SprClient, owner: Address): Promise<PublicMoney> {
@@ -141,13 +235,14 @@ export class SweepShortOfRent extends Error {
   constructor(
     /** The registry record's rent and the network fee, in lamports. */
     readonly rent: bigint,
+    /** The SOL there, with what the accounts that close first bring. */
     readonly held: bigint,
   ) {
     super(`The address holds ${String(held)} lamports and needs ${String(rent)}.`);
   }
 }
 
-/** The SOL that would move is less than the network fee it must hand back. */
+/** The SOL that would move is less than the network fee. */
 export class SweepTooSmall extends Error {
   override readonly name = "SweepTooSmall";
   constructor(
@@ -179,15 +274,19 @@ export function sweepFlow(input: {
   return { flowing, selfPaid };
 }
 
-/** What the fee takes, what is handed back to zSol, and the SOL that goes in. */
+/**
+ * What the fee takes, what is handed back to zSol, and the SOL that goes in. Less SOL than the
+ * fee can't move: fronted, the fee couldn't be handed back; paid by the address, it would leave
+ * the address short.
+ */
 export function sweepSplit(input: {
   readonly flowing: bigint;
   readonly selfPaid: boolean;
   readonly fee: bigint;
 }): { readonly paysBack: bigint; readonly sol: bigint; readonly paid: bigint } {
   const { flowing, selfPaid, fee } = input;
-  if (!selfPaid && flowing > 0n && flowing < fee) throw new SweepTooSmall(fee, flowing);
-  const paysBack = !selfPaid && flowing >= fee ? fee : 0n;
+  if (flowing > 0n && flowing < fee) throw new SweepTooSmall(fee, flowing);
+  const paysBack = !selfPaid && flowing > 0n ? fee : 0n;
   const paid = selfPaid ? fee : paysBack;
   const sol = flowing - paid;
   return { paysBack, sol: sol > 0n ? sol : 0n, paid };
@@ -207,31 +306,92 @@ export function failedInstructionOf(err: unknown): number | null {
   return typeof index === "bigint" ? Number(index) : null;
 }
 
-/** Tokens with an amount whose deposit Rings can't take as they stand. */
-async function stayingOf(
-  client: SprClient,
+/** What kit refuses to compile into one transaction. */
+const TOO_LARGE = [
+  SOLANA_ERROR__TRANSACTION__TOO_MANY_ACCOUNT_ADDRESSES,
+  SOLANA_ERROR__TRANSACTION__TOO_MANY_INSTRUCTIONS,
+  SOLANA_ERROR__TRANSACTION__EXCEEDS_SIZE_LIMIT,
+] as const;
+
+/** Errors that say the transaction holds too much, not that one part of it is wrong. */
+const TOO_MUCH: ReadonlySet<unknown> = new Set([
+  "ComputationalBudgetExceeded",
+  "MaxLoadedAccountsDataSizeExceeded",
+  "TooManyAccountLocks",
+]);
+
+/** The simulation ran out of room: compute, or the accounts it may load or lock. */
+export function overCapacity(err: unknown, unitsConsumed?: bigint): boolean {
+  if (unitsConsumed !== undefined && unitsConsumed >= BigInt(MAX_COMPUTE_UNITS)) return true;
+  if (TOO_MUCH.has(err)) return true;
+  const at = field(err, "InstructionError");
+  return Array.isArray(at) && TOO_MUCH.has((at as unknown[])[1]);
+}
+
+/** The compute a move asks for: what its simulation used, with room for a chain that moved on. */
+export function sweepComputeLimit(unitsConsumed: bigint | undefined): number {
+  if (unitsConsumed === undefined || unitsConsumed <= 0n) return MAX_COMPUTE_UNITS;
+  return Math.min(MAX_COMPUTE_UNITS, Math.ceil(Number(unitsConsumed) * 1.2) + 20_000);
+}
+
+/** One token account's part in a move, in the order a full transaction would drop them. */
+export interface SweepPart {
+  readonly token: PublicToken;
+  /** Wrapped SOL closed, a token deposited (its account closed after), an empty account closed. */
+  readonly kind: "unwrap" | "deposit" | "empty";
+}
+
+/** Where each of a move's instructions came from: a token's deposit or closing, or the move's own. */
+export type SweepOwner = { readonly token: PublicToken; readonly closes: boolean } | null;
+
+/**
+ * The parts a move that ran out of compute at instruction `at` leaves for the next one: every
+ * part that hadn't finished by then, and the last deposit that had, for the SOL after it. Never
+ * none, so each try takes less than the last.
+ */
+export function overflowOf(
+  parts: readonly SweepPart[],
+  owners: readonly SweepOwner[],
+  at: number | null,
+): SweepPart[] {
+  const end = at ?? owners.length;
+  const unfinished = new Set(
+    owners.slice(end).flatMap((owner) => (owner ? [owner.token.account] : [])),
+  );
+  const finished = parts.filter((part) => !unfinished.has(part.token.account));
+  const lastDeposit = finished.findLast((part) => part.kind === "deposit");
+  const dropped = parts.filter(
+    (part) => unfinished.has(part.token.account) || part === lastDeposit,
+  );
+  return dropped.length > 0 ? dropped : parts.slice(-1);
+}
+
+/**
+ * Tokens with an amount whose deposit Rings can't take as they stand: frozen ones, and ones the
+ * pool never held, whose interface a first deposit must make. A registry account someone sent
+ * lamports to, with no data yet, is one the pool never held.
+ */
+export async function stayingOf(
+  client: Pick<SprClient, "solanaRpc">,
   tokens: readonly PublicToken[],
 ): Promise<StayingToken[]> {
-  const asked = tokens.filter((token) => token.amount > 0n && !token.wrapped);
+  const asked = tokens.filter((token) => token.amount > 0n);
   const frozen = asked.filter((token) => token.frozen);
-  const open = asked.filter((token) => !token.frozen);
-  if (open.length === 0) return frozen.map((token) => ({ token, why: "frozen" }));
-  const registries = await Promise.all(open.map((token) => getSplAssetRegistryAddress(token.mint)));
-  const { value } = await client.solanaRpc
-    .getMultipleAccounts(registries, {
-      encoding: "base64",
-      commitment: "confirmed",
-      dataSlice: { offset: 0, length: 8 },
-    })
-    .send();
-  // A token Rings never took needs its interface made first, which a move doesn't do.
-  const fresh = open.filter((_, at) => {
-    const data = value[at]?.data;
-    return !Array.isArray(data) || data[0] === "";
-  });
+  const open = asked.filter((token) => !token.frozen && !token.wrapped);
+  const mints = [...new Set(open.map((token) => token.mint))];
+  const known = new Set<Address>();
+  if (mints.length > 0) {
+    const registries = await Promise.all(mints.map((mint) => getSplAssetRegistryAddress(mint)));
+    const read = await readAccounts(client, registries, { offset: 0, length: 8 });
+    mints.forEach((mint, at) => {
+      if ((read[at]?.length ?? 0) > 0) known.add(mint);
+    });
+  }
   return [
     ...frozen.map((token) => ({ token, why: "frozen" as const })),
-    ...fresh.map((token) => ({ token, why: "new-to-rings" as const })),
+    ...open
+      .filter((token) => !known.has(token.mint))
+      .map((token) => ({ token, why: "new-to-rings" as const })),
   ];
 }
 
@@ -245,8 +405,9 @@ export interface Sweep {
   /** The SOL that goes into the private balance, unwrapped SOL and closed accounts' rent too. */
   readonly sol: bigint;
   readonly moved: readonly PublicToken[];
+  /** What it leaves at the address, each for its reason; empty accounts too. */
   readonly staying: readonly StayingToken[];
-  /** Token accounts it closes once emptied, wrapped SOL's aside: their rent comes in as SOL. */
+  /** Token accounts it closes, wrapped SOL's aside: their rent comes in as SOL. */
   readonly closes: number;
   /** That rent, in lamports. */
   readonly closedRent: bigint;
@@ -254,13 +415,23 @@ export interface Sweep {
   readonly unwrapped: bigint;
 }
 
+const rentOf = (tokens: readonly PublicToken[]) =>
+  tokens.reduce((total, token) => total + token.rent, 0n);
+
 /** Nothing can move: what is there stays, each for its reason. */
 export interface NothingToMove {
   readonly nothing: true;
   readonly staying: readonly StayingToken[];
 }
 
-/** Throws `SweepShortOfRent`, `SweepTooSmall` and `SweepWouldFail`. */
+/**
+ * Each token deposits from its own account. An account whose closing fails stays open, its token
+ * still deposited; a token whose deposit fails stays, and the move is built again without it.
+ * Closes that need no deposit run before a first move registers the wallet, so what they bring
+ * can pay for the record. A move one transaction can't hold takes SOL first, then wrapped SOL,
+ * tokens, and empty accounts, and leaves the rest for the next move. Throws `SweepShortOfRent`,
+ * `SweepTooSmall` and `SweepWouldFail`, each before anything is signed.
+ */
 export async function buildSweep(
   client: SprClient,
   input: { readonly keypair: ShieldedKeypair; readonly feePayer: Address },
@@ -272,28 +443,74 @@ export async function buildSweep(
     isWalletRegistered({ rpc: client, owner: trader }),
   ]);
   const staying = await stayingOf(client, money.tokens);
-  const kept = new Set(staying.map((each) => each.token.account));
-  const movable =
-    money.lamports > 0n ||
-    money.tokens.some(
-      (token) =>
-        !kept.has(token.account) &&
-        (token.amount > 0n || (token.program === TOKEN_PROGRAM_ADDRESS && !token.frozen)),
-    );
-  if (!movable) return { nothing: true, staying };
-  let registryRent: bigint | null = null;
-  if (!registered) {
-    registryRent = await client.solanaRpc
-      .getMinimumBalanceForRentExemption(REGISTRY_RECORD_SPACE)
-      .send();
-    const needed = registryRent + SIGNATURE_FEE * 2n + PRIORITY_FEE;
-    if (money.lamports < needed) throw new SweepShortOfRent(needed, money.lamports);
-  }
+  const nothing = (): NothingToMove => ({ nothing: true, staying });
   const self = createNoopSigner(trader);
-  const register =
-    registryRent === null
-      ? []
-      : [
+  const selfFee = SIGNATURE_FEE + PRIORITY_FEE;
+  let registryRent: bigint | null = null;
+  let register: readonly Instruction[] = [];
+  // Accounts whose closing failed in a simulation: left open, their token still deposited.
+  const keepOpen = new Set<Address>();
+  const legs = new Map<string, readonly Instruction[]>();
+  const depositLegs = async (token: PublicToken, feePayer: Address) => {
+    const key = `${feePayer}:${token.account}`;
+    const known = legs.get(key);
+    if (known) return known;
+    const deposit = await buildDepositTransaction({
+      client,
+      feePayer,
+      depositor: trader,
+      recipient: shielded,
+      asset: token.mint,
+      amount: token.amount,
+      splTokenAccount: token.account,
+      createSplInterface: false,
+      ...(token.program === TOKEN_PROGRAM_ADDRESS ? {} : { splTokenProgram: token.program }),
+    });
+    const built = instructionsOf(deposit);
+    legs.set(key, built);
+    return built;
+  };
+  const close = (token: PublicToken) =>
+    getCloseAccountInstruction(
+      { account: token.account, destination: trader, owner: self },
+      { programAddress: token.program },
+    );
+
+  // Each try leaves out something the last one couldn't take: at most three times a token.
+  const tries = 3 * money.tokens.length + 2;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    const left = new Set(staying.map((each) => each.token.account));
+    const takes = (token: PublicToken) => !token.frozen && !left.has(token.account);
+    const parts: SweepPart[] = [
+      ...money.tokens
+        .filter((token) => token.wrapped && takes(token) && !keepOpen.has(token.account))
+        .map((token) => ({ token, kind: "unwrap" as const })),
+      ...money.tokens
+        .filter((token) => !token.wrapped && token.amount > 0n && takes(token))
+        .map((token) => ({ token, kind: "deposit" as const })),
+      ...money.tokens
+        .filter(
+          (token) =>
+            !token.wrapped && token.amount === 0n && takes(token) && !keepOpen.has(token.account),
+        )
+        .map((token) => ({ token, kind: "empty" as const })),
+    ];
+    if (money.lamports === 0n && parts.length === 0) return nothing();
+    const early = parts.filter((part) => part.kind !== "deposit").map((part) => part.token);
+    const depositing = parts.filter((part) => part.kind === "deposit").map((part) => part.token);
+    const closesAfter = depositing.filter((token) => !keepOpen.has(token.account));
+
+    if (!registered) {
+      // oxlint-disable-next-line no-await-in-loop -- asked once, on the first try.
+      registryRent ??= await client.solanaRpc
+        .getMinimumBalanceForRentExemption(REGISTRY_RECORD_SPACE)
+        .send();
+      const needed = registryRent + SIGNATURE_FEE * 2n + PRIORITY_FEE;
+      const held = money.lamports + rentOf(early);
+      if (held < needed) throw new SweepShortOfRent(needed, held);
+      if (register.length === 0) {
+        register = [
+          // oxlint-disable-next-line no-await-in-loop -- built once, on the first try.
           await getRegisterInstructionAsync({
             owner: self,
             payer: self,
@@ -301,58 +518,50 @@ export async function buildSweep(
             viewingPublicKey: input.keypair.viewingPublicKey().toBytes(),
           }),
         ];
-  const { value: lifetime } = await client.solanaRpc.getLatestBlockhash().send();
-  const selfFee = SIGNATURE_FEE + PRIORITY_FEE;
-
-  // Each try leaves out the token a simulation failed on; at most once a token, then once more.
-  for (let tries = 0; tries <= money.tokens.length; tries += 1) {
-    const stays = new Set(staying.map((each) => each.token.account));
-    const moving = money.tokens.filter(
-      (token) => token.amount > 0n && !token.wrapped && !stays.has(token.account),
-    );
-    // Classic accounts it empties close, wrapped SOL unwrapping; those that stay are kept.
-    const closing = money.tokens.filter(
-      (token) =>
-        token.program === TOKEN_PROGRAM_ADDRESS && !token.frozen && !stays.has(token.account),
-    );
-    const closed = closing.reduce((sum, token) => sum + token.rent, 0n);
+      }
+    }
     const { flowing, selfPaid } = sweepFlow({
       lamports: money.lamports,
       reserve: money.reserve,
       registryRent,
-      closed,
+      closed: rentOf(early) + rentOf(closesAfter),
       selfFee,
     });
     const feePayer = selfPaid ? trader : input.feePayer;
-
-    const fixed: Instruction[] = [...register];
-    const owners: (PublicToken | null)[] = register.map(() => null);
-    for (const token of money.tokens) {
-      if (moving.includes(token)) {
-        // oxlint-disable-next-line no-await-in-loop -- one deposit per token, in order.
-        const deposit = await buildDepositTransaction({
-          client,
-          feePayer,
-          depositor: trader,
-          recipient: shielded,
-          asset: token.mint,
-          amount: token.amount,
-          createSplInterface: false,
-          ...(token.program === TOKEN_PROGRAM_ADDRESS ? {} : { splTokenProgram: token.program }),
-        });
-        const legs = instructionsOf(deposit);
-        fixed.push(...legs);
-        owners.push(...legs.map(() => token));
-      }
-      if (closing.includes(token)) {
-        fixed.push(
-          getCloseAccountInstruction({ account: token.account, destination: trader, owner: self }),
-        );
-        owners.push(token);
-      }
+    const depositsOf = new Map<Address, readonly Instruction[]>();
+    for (const token of depositing) {
+      // oxlint-disable-next-line no-await-in-loop -- one deposit per token, in order.
+      depositsOf.set(token.account, await depositLegs(token, feePayer));
     }
 
-    const compile = async (fee: bigint) => {
+    const assemble = (kept: readonly SweepPart[]) => {
+      const instructions: Instruction[] = [];
+      const owners: SweepOwner[] = [];
+      for (const part of kept) {
+        if (part.kind === "deposit") continue;
+        instructions.push(close(part.token));
+        owners.push({ token: part.token, closes: true });
+      }
+      instructions.push(...register);
+      owners.push(...register.map(() => null));
+      for (const part of kept) {
+        if (part.kind !== "deposit") continue;
+        const deposit = depositsOf.get(part.token.account) ?? [];
+        instructions.push(...deposit);
+        owners.push(...deposit.map(() => ({ token: part.token, closes: false })));
+        if (!keepOpen.has(part.token.account)) {
+          instructions.push(close(part.token));
+          owners.push({ token: part.token, closes: true });
+        }
+      }
+      return { instructions, owners };
+    };
+    // oxlint-disable-next-line no-await-in-loop -- a fresh one each try.
+    const { value: lifetime } = await client.solanaRpc.getLatestBlockhash().send();
+    const rests = new Map<bigint, readonly Instruction[]>();
+    const restFor = async (fee: bigint) => {
+      const known = rests.get(fee);
+      if (known) return known;
       const split = sweepSplit({ flowing, selfPaid, fee });
       // Fronted, the fee is handed back to zSol's fee wallet before the rest of the SOL goes in.
       const rest: Instruction[] =
@@ -376,76 +585,129 @@ export async function buildSweep(
         });
         rest.push(...instructionsOf(deposit));
       }
-      if (moving.length === 0 && split.sol === 0n) return null;
-      return {
-        ...split,
-        transaction: compileTransaction(
-          pipe(
-            createTransactionMessage({ version: 1 }),
-            (message) => setTransactionMessageFeePayer(feePayer, message),
-            (message) => setTransactionMessageLifetimeUsingBlockhash(lifetime, message),
-            (message) =>
-              setTransactionMessageConfig(
-                {
-                  computeUnitLimit: SWEEP_COMPUTE_UNITS,
-                  loadedAccountsDataSizeLimit: LOADED_ACCOUNTS_DATA_SIZE_LIMIT,
-                  priorityFeeLamports: PRIORITY_FEE,
-                },
-                message,
-              ),
-            (message) => appendTransactionMessageInstructions([...fixed, ...rest], message),
-          ),
-        ),
-      };
+      rests.set(fee, rest);
+      return rest;
     };
+    const compile = (instructions: readonly Instruction[], computeUnitLimit: number) =>
+      compileTransaction(
+        pipe(
+          createTransactionMessage({ version: 1 }),
+          (message) => setTransactionMessageFeePayer(feePayer, message),
+          (message) => setTransactionMessageLifetimeUsingBlockhash(lifetime, message),
+          (message) =>
+            setTransactionMessageConfig(
+              {
+                computeUnitLimit,
+                loadedAccountsDataSizeLimit: LOADED_ACCOUNTS_DATA_SIZE_LIMIT,
+                priorityFeeLamports: PRIORITY_FEE,
+              },
+              message,
+            ),
+          (message) => appendTransactionMessageInstructions(instructions, message),
+        ),
+      );
+    // Compiled only when one transaction can hold it.
+    const fitting = (instructions: readonly Instruction[]): Transaction | null => {
+      let transaction: Transaction;
+      try {
+        transaction = compile(instructions, MAX_COMPUTE_UNITS);
+      } catch (error) {
+        if (TOO_LARGE.some((code) => isSolanaError(error, code))) return null;
+        throw error;
+      }
+      const accounts = getCompiledTransactionMessageDecoder().decode(transaction.messageBytes)
+        .staticAccounts.length;
+      return isTransactionWithinSizeLimit(transaction) && accounts <= MAX_ACCOUNTS
+        ? transaction
+        : null;
+    };
+    const later = (dropped: readonly SweepPart[]) => {
+      for (const part of dropped) staying.push({ token: part.token, why: "later" });
+    };
+
     // Built on a guess, then again only when the chain prices it differently.
     const guess = selfPaid ? selfFee : SIGNATURE_FEE * 2n + PRIORITY_FEE;
+    // A move deposits something, or zSol refuses it: closes alone hand back no fee.
+    if (depositing.length === 0 && sweepSplit({ flowing, selfPaid, fee: guess }).sol === 0n) {
+      return nothing();
+    }
     // oxlint-disable-next-line no-await-in-loop -- each try depends on the last.
-    const first = await compile(guess);
-    if (!first) return { nothing: true, staying };
-    // oxlint-disable-next-line no-await-in-loop
-    const fee = await networkFeeOf(client, first.transaction);
-    // oxlint-disable-next-line no-await-in-loop
-    const built = fee === guess ? first : await compile(fee);
-    if (!built) return { nothing: true, staying };
+    const rest = await restFor(guess);
+    const full = assemble(parts);
+    const probe = fitting([...full.instructions, ...rest]);
+    if (!probe) {
+      if (parts.length === 0)
+        throw new SweepWouldFail("Move to private doesn't fit one transaction.");
+      // The most that fit, found without asking the chain: the SOL's size doesn't depend on its amount.
+      let kept = parts.length - 1;
+      while (kept > 0 && !fitting([...assemble(parts.slice(0, kept)).instructions, ...rest])) {
+        kept -= 1;
+      }
+      later(parts.slice(kept));
+      continue;
+    }
 
     // oxlint-disable-next-line no-await-in-loop
     const { value: dryRun } = await client.solanaRpc
-      .simulateTransaction(getBase64EncodedWireTransaction(built.transaction), {
+      .simulateTransaction(getBase64EncodedWireTransaction(probe), {
         encoding: "base64",
         commitment: "confirmed",
         sigVerify: false,
         replaceRecentBlockhash: true,
       })
       .send();
-    if (!dryRun.err) {
-      return {
-        transaction: built.transaction,
-        money,
-        registryRent,
-        networkFee: built.paid,
-        sol: built.sol,
-        moved: moving,
-        staying,
-        closes: closing.filter((token) => !token.wrapped).length,
-        closedRent: closing
-          .filter((token) => !token.wrapped)
-          .reduce((sum, token) => sum + token.rent, 0n),
-        unwrapped: closing
-          .filter((token) => token.wrapped)
-          .reduce((sum, token) => sum + token.amount, 0n),
-      };
+    if (dryRun.err) {
+      if (overCapacity(dryRun.err, dryRun.unitsConsumed)) {
+        if (parts.length === 0) {
+          throw new SweepWouldFail("Move to private doesn't fit one transaction.");
+        }
+        later(overflowOf(parts, full.owners, failedInstructionOf(dryRun.err)));
+        continue;
+      }
+      const at = failedInstructionOf(dryRun.err);
+      const owner = at === null ? null : (full.owners[at] ?? null);
+      if (!owner) {
+        throw new SweepWouldFail(
+          `Move to private fails in simulation: ${JSON.stringify(dryRun.err, (_, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+          )}`,
+        );
+      }
+      // An emptied account that won't close stays open; a deposit that fails, or wrapped SOL that
+      // won't unwrap, keeps its money where it is.
+      if (owner.closes && !(owner.token.wrapped && owner.token.amount > 0n)) {
+        keepOpen.add(owner.token.account);
+      } else {
+        staying.push({ token: owner.token, why: "fails" });
+      }
+      continue;
     }
-    const at = failedInstructionOf(dryRun.err);
-    const culprit = at === null ? null : (owners[at] ?? null);
-    if (!culprit) {
-      throw new SweepWouldFail(
-        `Move to private fails in simulation: ${JSON.stringify(dryRun.err, (_, value: unknown) =>
-          typeof value === "bigint" ? value.toString() : value,
-        )}`,
-      );
-    }
-    staying.push({ token: culprit, why: "fails" });
+
+    const computeUnits = sweepComputeLimit(dryRun.unitsConsumed);
+    const priced = compile([...full.instructions, ...rest], computeUnits);
+    // oxlint-disable-next-line no-await-in-loop
+    const fee = await networkFeeOf(client, priced);
+    const transaction =
+      fee === guess
+        ? priced
+        : // oxlint-disable-next-line no-await-in-loop
+          compile([...full.instructions, ...(await restFor(fee))], computeUnits);
+    const { paid, sol } = sweepSplit({ flowing, selfPaid, fee });
+    const closedAccounts = [...early, ...closesAfter].filter((token) => !token.wrapped);
+    return {
+      transaction,
+      money,
+      registryRent,
+      networkFee: paid,
+      sol,
+      moved: depositing,
+      staying,
+      closes: closedAccounts.length,
+      closedRent: rentOf(closedAccounts),
+      unwrapped: early
+        .filter((token) => token.wrapped)
+        .reduce((total, token) => total + token.amount, 0n),
+    };
   }
   throw new SweepWouldFail("Move to private kept failing in simulation.");
 }

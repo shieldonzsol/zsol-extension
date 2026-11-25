@@ -24,6 +24,7 @@ import { useWallet } from "@/features/wallet/wallet-store";
 
 import { moneyLines, STAY_WORDS, summaryOf, tokenLine, type MoneyLine } from "./money-words";
 import {
+  another,
   back,
   checkAgain,
   confirm,
@@ -122,13 +123,31 @@ function Stage({
   }
   if (state.kind === "sending") return <Sending order={state.order} site={site} />;
   if (state.kind === "done") {
+    const rest = state.review.staying.some((each) => each.why === "later");
     return (
       <Done
-        title="Moved. It's in your private balance."
-        body={`${summaryOf(movedLines(state.review))} from your zSol address. Your balance is up to date.`}
+        title={
+          rest
+            ? "Part of it moved into your private balance."
+            : "Moved. It's in your private balance."
+        }
+        body={
+          rest
+            ? `${summaryOf(movedLines(state.review))} from your zSol address. One move holds only so much: move again for the rest.`
+            : `${summaryOf(movedLines(state.review))} from your zSol address. Your balance is up to date.`
+        }
         order={state.order}
         signature={state.signature}
         site={site}
+        {...(rest
+          ? {
+              again: "Move the rest",
+              onAgain: () => {
+                another();
+                void review(signInWallet);
+              },
+            }
+          : {})}
       />
     );
   }

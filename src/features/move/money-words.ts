@@ -48,5 +48,6 @@ export function summaryOf(lines: readonly MoneyLine[]): string {
 export const STAY_WORDS: Record<StayReason, string> = {
   "new-to-rings": "The private pool doesn't take this token yet.",
   frozen: "Its issuer froze this account, so it can't move.",
-  fails: "Its deposit into the private pool fails, so it stays.",
+  fails: "Moving it fails on Solana right now, so it stays.",
+  later: "One move holds only so much: the next move takes it.",
 };
