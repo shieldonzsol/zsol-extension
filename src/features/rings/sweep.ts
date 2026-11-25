@@ -246,8 +246,10 @@ export interface Sweep {
   readonly sol: bigint;
   readonly moved: readonly PublicToken[];
   readonly staying: readonly StayingToken[];
-  /** Empty token accounts it closes, their rent coming in with the SOL. */
-  readonly closesEmpty: number;
+  /** Token accounts it closes once emptied, wrapped SOL's aside: their rent comes in as SOL. */
+  readonly closes: number;
+  /** That rent, in lamports. */
+  readonly closedRent: bigint;
   /** Wrapped SOL it unwraps, in lamports, coming in with the SOL. */
   readonly unwrapped: bigint;
 }
@@ -425,7 +427,10 @@ export async function buildSweep(
         sol: built.sol,
         moved: moving,
         staying,
-        closesEmpty: closing.filter((token) => token.amount === 0n).length,
+        closes: closing.filter((token) => !token.wrapped).length,
+        closedRent: closing
+          .filter((token) => !token.wrapped)
+          .reduce((sum, token) => sum + token.rent, 0n),
         unwrapped: closing
           .filter((token) => token.wrapped)
           .reduce((sum, token) => sum + token.amount, 0n),

@@ -317,11 +317,11 @@ function ReviewCard({
               Its wrapped SOL, {sol(built.unwrapped)}, is unwrapped and comes in with the SOL.
             </span>
           ) : null}
-          {built.closesEmpty > 0 ? (
+          {built.closes > 0 ? (
             <span>
-              {built.closesEmpty === 1
-                ? "An empty token account closes, and its rent comes in with the SOL."
-                : `${String(built.closesEmpty)} empty token accounts close, and their rent comes in with the SOL.`}
+              {built.closes === 1
+                ? `Its token account closes once emptied, and its rent, ${sol(built.closedRent)}, comes in with the SOL.`
+                : `${String(built.closes)} token accounts close once emptied, and their rent, ${sol(built.closedRent)}, comes in with the SOL.`}
             </span>
           ) : null}
         </div>
