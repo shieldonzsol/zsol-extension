@@ -13,7 +13,7 @@ import {
 } from "@solana/kit";
 
 import type { SubmitHooks } from "@/features/action/engine";
-import { SendUnanswered, SendUnconfirmed, SponsorRefused } from "@/features/action/sponsor";
+import { SendUnanswered, SendUnconfirmed, SponsorRefused } from "@/features/action/send-errors";
 import type { SprClient } from "@/features/rings/client";
 
 /** Solana refused it before it left: it failed in the gateway's simulation. Nothing moved. */
@@ -28,7 +28,7 @@ function httpStatusOf(error: unknown): number | null {
 }
 
 export async function sendFromGhost(input: {
-  readonly client: SprClient;
+  readonly client: Pick<SprClient, "solanaRpc" | "confirmTransaction">;
   readonly keys: CryptoKeyPair;
   readonly transaction: Transaction;
   readonly hooks: SubmitHooks;

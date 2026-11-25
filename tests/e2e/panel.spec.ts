@@ -30,7 +30,7 @@ test("the extension asks Chrome for the side panel, its storage, a timer, the lo
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   const manifest: unknown = await page.evaluate("chrome.runtime.getManifest()");
   expect(manifest).toMatchObject({
-    permissions: ["sidePanel", "storage", "alarms", "idle", "activeTab"],
+    permissions: ["sidePanel", "storage", "alarms", "idle", "activeTab", "scripting"],
     side_panel: { default_path: "sidepanel.html" },
   });
 });

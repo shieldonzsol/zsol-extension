@@ -78,7 +78,14 @@ export async function writeOpened(opened: Opened): Promise<void> {
 /** Locks the wallet in every window; the account stays paired. */
 export async function lockAll(reason: LockReason): Promise<void> {
   await browser.storage.session.set({ [KEYS.locked]: reason });
-  await browser.storage.session.remove([KEYS.opened, KEYS.busy, KEYS.lockPending, KEYS.active]);
+  // The sign-in kept for the overlay goes with the wallet.
+  await browser.storage.session.remove([
+    KEYS.opened,
+    KEYS.busy,
+    KEYS.lockPending,
+    KEYS.active,
+    "auth",
+  ]);
 }
 
 export async function readLockReason(): Promise<LockReason | null> {

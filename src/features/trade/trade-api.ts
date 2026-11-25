@@ -3,7 +3,7 @@
 // anything reads it.
 import { address, getBase64Encoder, isAddress, type Address } from "@solana/kit";
 
-import { siteFetch } from "@/features/rings/client";
+import { siteFetch } from "@/features/rings/site-fetch";
 import type { AggregatorBuild, SwapInstruction } from "@/features/rings/trade";
 
 export const WRAPPED_SOL = "So11111111111111111111111111111111111111112";

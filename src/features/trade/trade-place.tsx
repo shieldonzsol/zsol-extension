@@ -1,6 +1,7 @@
 import { ArrowDownIcon, ArrowRightIcon, LoaderCircleIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
+import { placeHref } from "@/app/places";
 import { buttonVariants } from "@/components/ui/button";
 import {
   AmountField,
@@ -112,6 +113,12 @@ export function TradePlace({
         title="Trade"
         body="Any token Jupiter routes, from your private balance or from a ghost wallet."
       />
+      <a
+        href={placeHref("overlay")}
+        className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
+      >
+        zSol on your terminal
+      </a>
       {wallet.kind !== "open" || wallet.balances === null ? (
         <NotOpenYet what="Trade" />
       ) : (

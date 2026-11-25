@@ -2,7 +2,7 @@ import { PrivyProvider, useIdentityToken, useLoginWithSiws, usePrivy } from "@pr
 import { useEffect, type ReactNode } from "react";
 
 import { PRIVY_APP_ID } from "@/config";
-import { setIdentityToken } from "@/features/privy/auth-headers";
+import { authHeaders, setIdentityToken } from "@/features/privy/auth-headers";
 import { siwsMessage } from "@/features/privy/siws";
 import { extensionKey } from "@/features/session/extension-key";
 import { onSignOut, setSignIn, type SignIn } from "@/features/session/session-store";
@@ -54,11 +54,19 @@ export default function PrivySession({
   );
 }
 
+/** How often an open panel renews the sign-in it keeps for the overlay. */
+const RENEW_MS = 4 * 60_000;
+
 function KeepIdentityToken() {
   const { identityToken } = useIdentityToken();
   useEffect(() => {
     setIdentityToken(identityToken);
-    return () => setIdentityToken(null);
+    void authHeaders().catch(() => undefined);
+    const renew = setInterval(() => void authHeaders().catch(() => undefined), RENEW_MS);
+    return () => {
+      clearInterval(renew);
+      setIdentityToken(null);
+    };
   }, [identityToken]);
   return null;
 }

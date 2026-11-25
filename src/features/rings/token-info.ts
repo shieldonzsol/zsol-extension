@@ -2,7 +2,8 @@
 // the card can't be read, the chain still gives the decimals, so an amount is never misread.
 import { isAddress, type Address } from "@solana/kit";
 
-import { siteFetch, type SprClient } from "./client";
+import type { SprClient } from "./client";
+import { siteFetch } from "./site-fetch";
 import type { Asset } from "./holdings";
 
 export interface TokenInfo extends Asset {
@@ -58,7 +59,7 @@ async function fromCard(site: string, mint: string): Promise<TokenInfo | null> {
   };
 }
 
-async function fromChain(client: SprClient, mint: Address): Promise<TokenInfo> {
+async function fromChain(client: Pick<SprClient, "solanaRpc">, mint: Address): Promise<TokenInfo> {
   const { value } = await client.solanaRpc
     .getAccountInfo(mint, { encoding: "jsonParsed", commitment: "confirmed" })
     .send();
@@ -77,7 +78,11 @@ async function fromChain(client: SprClient, mint: Address): Promise<TokenInfo> {
 }
 
 /** What a mint is; read once, then kept. Throws when it isn't a token. */
-export function tokenInfo(site: string, client: SprClient, mint: string): Promise<TokenInfo> {
+export function tokenInfo(
+  site: string,
+  client: Pick<SprClient, "solanaRpc">,
+  mint: string,
+): Promise<TokenInfo> {
   if (!isAddress(mint)) return Promise.reject(new Error("Not a mint address."));
   let found = known.get(mint);
   if (!found) {

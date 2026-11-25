@@ -5,6 +5,7 @@ import { PlaceTabs } from "@/components/place-tabs";
 import { GhostPayPlace } from "@/features/ghost/ghost-pay-place";
 import { forgetGhostPay } from "@/features/ghost/ghost-pay-store";
 import { MovePlace } from "@/features/move/move-place";
+import { OverlayPlace } from "@/features/overlay/overlay-place";
 import { forgetMove } from "@/features/move/move-store";
 import { forgetPublicMoney } from "@/features/move/public-money";
 import { OrdersPlace } from "@/features/orders/orders-place";
@@ -56,6 +57,8 @@ export default function SignedIn({
       <main className="min-h-0 flex-1 overflow-y-auto">
         {place === "pay-many" ? (
           <PayManyPlace site={site} signInWallet={signInWallet} />
+        ) : place === "overlay" ? (
+          <OverlayPlace />
         ) : place === "ghost-pay" ? (
           <GhostPayPlace site={site} signInWallet={signInWallet} />
         ) : place === "trade" ? (

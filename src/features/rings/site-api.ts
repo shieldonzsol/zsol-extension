@@ -1,6 +1,6 @@
 // Calls to the paired zSol's own API. Each failure is named, so the panel can say plainly what
 // went wrong and whether trying again can help.
-import { authHeaders } from "@/features/privy/auth-headers";
+import { authHeaders } from "@/features/auth/auth-source";
 
 import { siteFetch } from "./client";
 

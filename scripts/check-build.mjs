@@ -7,12 +7,35 @@ const problems = [];
 
 const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
 
-const allowedPermissions = new Set(["sidePanel", "storage", "alarms", "idle", "activeTab"]);
+const allowedPermissions = new Set([
+  "sidePanel",
+  "storage",
+  "alarms",
+  "idle",
+  "activeTab",
+  "scripting",
+]);
 for (const permission of manifest.permissions ?? []) {
   if (!allowedPermissions.has(permission)) problems.push(`manifest asks for "${permission}"`);
 }
-for (const key of ["host_permissions", "optional_host_permissions", "content_scripts"]) {
+for (const key of ["host_permissions", "content_scripts", "web_accessible_resources"]) {
   if (manifest[key]?.length) problems.push(`manifest has ${key}`);
+}
+// The overlay's sites, each asked for only when the trader turns it on there: exactly these.
+const overlaySites = [
+  "https://axiom.trade/*",
+  "https://gmgn.ai/*",
+  "https://trade.padre.gg/*",
+  "https://neo.bullx.io/*",
+  "https://photon-sol.tinyastro.io/*",
+  "https://pump.fun/*",
+  "https://dexscreener.com/*",
+  "https://birdeye.so/*",
+];
+if ((manifest.optional_host_permissions ?? []).join() !== overlaySites.join()) {
+  problems.push(
+    `optional_host_permissions differ from the overlay's sites: ${JSON.stringify(manifest.optional_host_permissions)}`,
+  );
 }
 const pages = manifest.externally_connectable?.matches ?? [];
 if (manifest.externally_connectable?.ids || pages.join() !== "https://zsol.cc/*") {

@@ -5,11 +5,31 @@ import { manifestFor } from "../src/manifest";
 describe("manifest", () => {
   const manifest = manifestFor("production");
 
-  it("asks only for the side panel, its storage, the lock's timer, the computer's lock and the tab it opened from", () => {
-    expect(manifest.permissions).toEqual(["sidePanel", "storage", "alarms", "idle", "activeTab"]);
+  it("asks only for the side panel, its storage, the lock's timer, the computer's lock, the tab it opened from and the overlay's script", () => {
+    expect(manifest.permissions).toEqual([
+      "sidePanel",
+      "storage",
+      "alarms",
+      "idle",
+      "activeTab",
+      "scripting",
+    ]);
   });
 
-  it("reaches no website and runs inside none", () => {
+  it("asks for a trading site only when the trader turns the overlay on there", () => {
+    expect(manifest.optional_host_permissions).toEqual([
+      "https://axiom.trade/*",
+      "https://gmgn.ai/*",
+      "https://trade.padre.gg/*",
+      "https://neo.bullx.io/*",
+      "https://photon-sol.tinyastro.io/*",
+      "https://pump.fun/*",
+      "https://dexscreener.com/*",
+      "https://birdeye.so/*",
+    ]);
+  });
+
+  it("reaches no website at install and runs inside none", () => {
     expect(manifest).not.toHaveProperty("host_permissions");
     expect(manifest).not.toHaveProperty("content_scripts");
     expect(manifest).not.toHaveProperty("web_accessible_resources");

@@ -49,8 +49,8 @@ type it on zsol.cc under Connect extension and approve once in your wallet.
 - [x] **Pay many:** up to 14 zSol addresses in one private transaction, a list pasted or a CSV
 - [x] **Ghost pay:** any address paid through Ghost Route, at once or in timed parts
 - [ ] **Go dark:** move SOL into your private balance by Ghost Route
-- [ ] **Over your terminal:** zSol on top of Axiom, GMGN, Terminal and more, only on the sites
-      where you turn it on
+- [x] **Over your terminal:** a zSol chip on Axiom, GMGN, Terminal and more, only on the sites
+      where you turn it on: one click buys or sells from a ghost wallet
 
 ## How connecting works
 
@@ -89,8 +89,12 @@ sequenceDiagram
 - **Your keys stay on your device.** The panel signs on your machine; nothing it holds is sent to
   us in the clear.
 - **The fewest permissions possible.** No access to the pages you visit beyond the address of
-  the tab you open zSol from, no content scripts, no host permissions. The overlay will ask for a
-  site only when you turn it on there.
+  the tab you open zSol from, and no site at install. The overlay asks Chrome for a trading site
+  only when you turn it on there.
+- **The overlay holds nothing secret.** Its chip draws in a closed shadow root, reads only the
+  page's address, and acts only on your own clicks. The amounts are the buttons you set, within
+  a limit per click and per day; the swap is checked and signed in the extension, never on the
+  page.
 - **No code from the network.** Everything the extension runs ships inside the package.
   `pnpm check:build` fails any build that loads a script from the network or asks for a
   permission not on its list.
@@ -107,6 +111,8 @@ sequenceDiagram
 | `alarms`                                            | Checks once a minute whether the wallet should lock                                                                   |
 | `idle`                                              | Locks the wallet when your computer locks                                                                             |
 | `activeTab`                                         | Reads the address of the tab you open zSol from, to offer the token on that page. That tab only, while you stay on it |
+| `scripting`                                         | Adds the overlay's chip to a trading site, once you turn it on there                                                  |
+| A trading site, asked one at a time                 | Only when you turn the overlay on for it; given back when you turn it off                                             |
 | `externally_connectable` for `https://zsol.cc` only | Lets zsol.cc hand your sealed wallet over when you connect                                                            |
 
 None of these shows a warning when you install.

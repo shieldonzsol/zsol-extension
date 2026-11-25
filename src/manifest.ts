@@ -1,4 +1,5 @@
 import type { UserManifest } from "wxt";
+import { OVERLAY_PATTERNS } from "./features/overlay/sites";
 
 export const ZSOL_URL = "https://zsol.cc";
 
@@ -28,13 +29,16 @@ export function manifestFor(mode: string) {
     // Ed25519 in Web Crypto.
     minimum_chrome_version: "137",
     incognito: "not_allowed",
-    // The open wallet in memory, the lock's timer, locking when the computer locks, and the
-    // address of the tab zSol was opened from.
-    permissions: ["sidePanel", "storage", "alarms", "idle", "activeTab"],
+    // The open wallet in memory, the lock's timer, locking when the computer locks, the address
+    // of the tab zSol was opened from, and the overlay's script on a site the trader allowed.
+    permissions: ["sidePanel", "storage", "alarms", "idle", "activeTab", "scripting"],
+    // Asked one site at a time, when the trader turns the overlay on there; never at install.
+    optional_host_permissions: [...OVERLAY_PATTERNS],
     action: { default_title: "Open zSol" },
     externally_connectable: { matches: originsFor(mode).map(matchFor) },
     // The private wallet's hasher is WebAssembly shipped in the package.
     content_security_policy: { extension_pages: EXTENSION_PAGES_POLICY },
-    ...(mode === "development" ? { key: DEV_KEY } : {}),
+    // Development builds hold one terminal already, so headless tests skip Chrome's prompt.
+    ...(mode === "development" ? { key: DEV_KEY, host_permissions: ["https://gmgn.ai/*"] } : {}),
   } satisfies UserManifest;
 }

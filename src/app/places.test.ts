@@ -16,6 +16,7 @@ describe("places", () => {
     expect(placeFromHash("#/ghost-pay")).toBe("ghost-pay");
     expect(tabOf("ghost-pay")).toBe("send");
     expect(placeFromHash("#/trade")).toBe("trade");
+    expect(tabOf("overlay")).toBe("trade");
     expect(tabOf("move")).toBe("wallet");
     expect(placeFromHash("#/toString")).toBe("wallet");
     expect(placeFromHash("")).toBe("wallet");

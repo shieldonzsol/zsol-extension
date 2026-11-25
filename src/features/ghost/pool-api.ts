@@ -2,7 +2,7 @@
 // a plan registered before anything is signed, and the deposit zSol's server builds and sends.
 import { isAddress } from "@solana/kit";
 
-import { siteFetch } from "@/features/rings/client";
+import { siteFetch } from "@/features/rings/site-fetch";
 
 import { RATE_CAPS, type PlannedPart, type PoolRates } from "./pool-plan";
 

@@ -11,6 +11,8 @@ import {
   readLockAfter,
   readPendingLock,
 } from "@/features/lock/vault";
+import { listenForChips } from "@/features/overlay/background";
+import { syncSites } from "@/features/overlay/registration";
 
 const LOCK_CHECK = "lock-check";
 
@@ -46,4 +48,7 @@ export default defineBackground(() => {
   browser.idle.onStateChanged.addListener((state) => {
     if (state === "locked") void lockSoon("screen");
   });
+  listenForChips();
+  browser.permissions.onRemoved.addListener(() => void syncSites());
+  void syncSites();
 });
