@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   AmountField,
   Card,
+  ExternalLink,
   Failed,
   Heading,
   NotOpenYet,
@@ -112,7 +113,9 @@ function Stage({
   if (made.kind === "review")
     return <ReviewCard review={made.review} signInWallet={signInWallet} />;
   if (made.kind === "sending") return <Sending order={made.order} site={site} />;
-  if (made.kind === "done") return <Made review={made.review} order={made.order} site={site} />;
+  if (made.kind === "done") {
+    return <Made review={made.review} order={made.order} signature={made.signature} site={site} />;
+  }
   return (
     <Failed
       facts={made.facts}
@@ -350,10 +353,12 @@ function ReviewCard({
 function Made({
   review: made,
   order,
+  signature,
   site,
 }: {
   readonly review: Review;
   readonly order: string;
+  readonly signature: string;
   readonly site: string;
 }) {
   const url = linkUrl(site, made.code);
@@ -374,6 +379,7 @@ function Made({
         <p className="text-label text-pretty text-muted-foreground">
           Until someone claims it, you can take it back below.
         </p>
+        <ExternalLink href={`${site}/tx/${signature}`}>See what the public sees</ExternalLink>
       </Card>
       <button
         type="button"
